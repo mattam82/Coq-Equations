@@ -332,6 +332,46 @@ and map_split f split =
        Compute (lhs', where, f ty, em)
   in aux split
 
+let rec map_rel_program f p =
+  { program_info = map_rel_program_info f p.program_info;
+    program_prob = map_rel_ctx_map f p.program_prob;
+    program_splitting = map_rel_split f p.program_splitting;
+    program_rec = Option.map (map_rel_rec_info f) p.program_rec;
+    program_term = p.program_term }
+
+and map_rel_where f w =
+  { w with where_program = map_rel_program f w.where_program }
+
+and map_rel_split f split =
+  let rec aux = function
+    | Compute (lhs, where, ty, RProgram c) ->
+      let where' = List.map (fun w -> map_rel_where f w) where in
+      let lhs' = map_rel_ctx_map f lhs in
+        Compute (lhs', where', ty, RProgram c)
+    | Split (lhs, y, z, cs) ->
+      let lhs' = map_rel_ctx_map f lhs in
+      Split (lhs', y, z, Array.map (Option.map aux) cs)
+    | Mapping (lhs, s) ->
+       let lhs' = map_rel_ctx_map f lhs in
+       Mapping (lhs', aux s)
+    | Refined (lhs, info, s) ->
+      let lhs' = map_rel_ctx_map f lhs in
+      let scargs = info.refined_args in
+        Refined (lhs', { info with refined_args = scargs;
+          refined_revctx = map_rel_ctx_map f info.refined_revctx;
+          refined_newprob = map_rel_ctx_map f info.refined_newprob;
+          refined_newprob_to_lhs = map_rel_ctx_map f info.refined_newprob_to_lhs}, aux s)
+    | Compute (lhs, where, ty, (REmpty _ as em)) ->
+       let lhs' = map_rel_ctx_map f lhs in
+       Compute (lhs', where, ty, em)
+  in aux split
+
+and map_rel_rec_info f r =
+  { r with rec_prob = map_rel_ctx_map f r.rec_prob }
+
+and map_rel_program_info f p =
+  { p with program_sign = List.map (Context.Rel.Declaration.map_relevance f) p.program_sign; }
+
 let is_nested p =
   match p.Syntax.program_rec with
   | Some (Structural (NestedOn _)) -> true
@@ -1274,6 +1314,7 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
     let sigma = !evd in
     let programs = List.map (map_program (simplify_evars sigma)) programs in
     let programs = List.map (map_program (nf_evar sigma)) programs in
+    let programs = List.map (map_rel_program (fun r -> ERelevance.make (ERelevance.kind sigma r))) programs in
     let ustate = Evd.ustate sigma in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
     hook ~pm recobls helpers ustate Locality.(Global ImportDefaultBehavior) programs

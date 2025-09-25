@@ -218,9 +218,14 @@ let e_type_of env evd t =
 
 let collapse_term_qualities uctx c =
   let open Sorts.Quality in
-  let nf_rel r = match UState.nf_relevance uctx r with
-    | Relevant | Irrelevant as r -> r
-    | RelevanceVar _ -> (* hack *) Relevant
+  let nf_rel r =
+    try
+      match UState.nf_relevance uctx r with
+      | Relevant | Irrelevant as r -> r
+      | RelevanceVar _ -> (* hack *) Relevant
+    with e ->
+	  if CErrors.is_anomaly e then Relevant
+	  else raise e
   in
   let nf_qvar q = match UState.nf_qvar uctx q with
     | QConstant _ as q -> q
@@ -1004,6 +1009,7 @@ let get_id decl = Context.Named.Declaration.get_id decl
 let fold_named_context_reverse = Context.Named.fold_inside
 let map_rel_context = Context.Rel.map
 let map_rel_declaration = Context.Rel.Declaration.map_constr
+let map_rel_relevance f = List.map (Context.Rel.Declaration.map_relevance f)
 let map_named_declaration = Context.Named.Declaration.map_constr
 let map_named_context = Context.Named.map
 let lookup_named = Context.Named.lookup
