@@ -8,7 +8,7 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-From Stdlib Require Import Extraction.
+From Corelib Require Import Extraction.
 
 (** This exports tactics *)
 Declare ML Module "rocq-equations.plugin".
@@ -20,7 +20,7 @@ Require Export Equations.Prop.Classes.
 From Equations.Prop Require Import DepElim Constants.
 Require Export Equations.Prop.EqDec.
 Require Export Equations.Prop.EqDecInstances.
-Require Export Equations.Prop.NoConfusion Equations.Prop.Subterm.
+Require Export Equations.Prop.NoConfusion Equations.Prop.Relations Equations.Prop.Subterm.
 Require Export Equations.Prop.Tactics.
 Require Export Equations.Prop.FunctionalInduction. (* funelim tactic *)
 

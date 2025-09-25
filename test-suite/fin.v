@@ -1,4 +1,4 @@
-From Stdlib Require Import Program.
+From Stdlib Require Import Program Arith.
 From Equations.Prop Require Import EqDecInstances Equations.
 Import Sigma_Notations.
 Local Open Scope equations_scope.
