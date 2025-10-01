@@ -452,19 +452,20 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
       | Names.GlobRef.VarRef var -> assert false
       | Names.GlobRef.ConstRef cst ->
         let pcst = Equations_common.evd_comb1 (Evd.fresh_constant_instance env) evd cst in
+        let pcst = from_peuniverses !evd pcst in
         let tf = Constr.mkConstU pcst in
         let ty = Typeops.type_of_constant_in env pcst in
         of_constr tf, of_constr ty
       | Names.GlobRef.IndRef ind ->
         let pind = Equations_common.evd_comb1 (Evd.fresh_inductive_instance env) evd ind in
-        let tf = Constr.mkIndU pind in
-        let ty = Inductiveops.type_of_inductive env (to_peuniverses pind) in
-        of_constr tf, ty
+        let tf = EConstr.mkIndU pind in
+        let ty = Inductiveops.type_of_inductive env pind in
+        tf, ty
       | Names.GlobRef.ConstructRef cstr ->
         let pcstr = Equations_common.evd_comb1 (Evd.fresh_constructor_instance env) evd cstr in
-        let tf = Constr.mkConstructU pcstr in
-        let ty = Inductiveops.type_of_constructor env (Util.on_snd EInstance.make pcstr) in
-        of_constr tf, ty
+        let tf = EConstr.mkConstructU pcstr in
+        let ty = Inductiveops.type_of_constructor env pcstr in
+        tf, ty
   in
   let env = push_rel_context ctx env in
   let prefix, suffix = CList.map_until (fun o -> o) args in

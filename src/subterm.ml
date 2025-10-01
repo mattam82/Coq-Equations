@@ -174,7 +174,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
       let env = Global.env () in
       let sigma = Evd.from_env env in
       let sigma, ind = Evd.fresh_inductive_instance env sigma (k,0) in
-      ignore (Sigma_types.declare_sig_of_ind env sigma ~poly (to_peuniverses ind)) in
+      ignore (Sigma_types.declare_sig_of_ind env sigma ~poly ind) in
     let subind = mkIndU ((k,0), u) in
     let constrhints =
       List.map_i (fun i entry ->
