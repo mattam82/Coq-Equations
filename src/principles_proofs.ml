@@ -1102,7 +1102,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace =
           *                              pr_context_map env !evd unfwp.program_prob) in *)
          (* let _ = Typing.type_of env !evd ty in *)
          let cst = Equations_common.evd_comb1 (Evd.fresh_constant_instance env) evd cst in
-         let cst = EConstr.of_constr (Constr.mkConstU cst) in
+         let cst = EConstr.mkConstU cst in
          let ty = Retyping.get_type_of env !evd cst in
          let tac =
            assert_by (Name id) ty
