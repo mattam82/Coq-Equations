@@ -252,6 +252,12 @@ let map_ctx_map f map = {
   tgt_ctx = map_rel_context f map.tgt_ctx;
 }
 
+let map_rel_ctx_map f map = {
+  src_ctx = map_rel_relevance f map.src_ctx;
+  map_inst = map.map_inst;
+  tgt_ctx = map_rel_relevance f map.tgt_ctx;
+}
+
 (** Specialize by a substitution. *)
 
 let subst_pats_constr sigma k s c =
