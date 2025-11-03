@@ -224,7 +224,7 @@ let collapse_term_qualities uctx c =
       | Relevant | Irrelevant as r -> r
       | RelevanceVar _ -> (* hack *) Relevant
     with e ->
-	  if CErrors.is_anomaly e then Relevant
+          if CErrors.is_sync_anomaly e then Relevant
 	  else raise e
   in
   let nf_qvar q = match UState.nf_qvar uctx q with
@@ -1030,7 +1030,6 @@ let user_err_loc (loc, pp) =
   CErrors.user_err ?loc pp
 let error s = CErrors.user_err (str s)
 let errorlabstrm msg = CErrors.user_err msg
-let is_anomaly = CErrors.is_anomaly
 let print_error e = CErrors.print e
 
 let nf_betadeltaiota = nf_all

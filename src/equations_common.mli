@@ -375,7 +375,6 @@ val pp : Pp.t -> unit
 val user_err_loc : (Loc.t option * Pp.t) -> 'a
 val error : string -> 'a
 val errorlabstrm : Pp.t -> 'a
-val is_anomaly : exn -> bool
 val print_error : exn -> Pp.t
 val anomaly : ?label:string -> Pp.t -> 'a
                                 

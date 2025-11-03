@@ -223,7 +223,7 @@ let check_ctx_map ?(unsafe = false) env evars map =
          errorlabstrm
            (str"Type error while building context map: " ++ pr_context_map env evars map ++
             spc () ++ str"Invalid_argument: " ++ str s)
-       | e when is_anomaly e ->
+       | e when CErrors.is_sync_anomaly e ->
          errorlabstrm
            (str"Type error while building context map: " ++ pr_context_map env evars map ++
             spc () ++ str"Anomaly: " ++ CErrors.print e)
