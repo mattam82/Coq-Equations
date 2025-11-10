@@ -18,7 +18,7 @@ test-suite:
 clean:
 	dune clean
 	
-siteexamples: examples/*.glob
+siteexamples: _build/default/examples/*.glob
 	sh siteexamples.sh
 
 doc: html
