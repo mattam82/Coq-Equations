@@ -7,10 +7,10 @@ title: Gallery of programs and proofs
 Learning Equations
 ==================
 
-- You can discover and learn Equations through [interactive tutorials](https://coq.inria.fr/platform-docs/)
+- You can discover and learn Equations through [interactive tutorials](https://rocq-prover.org/docs/equations-docs)
   directly in your browser, or locally with Equations installed.
 
-You can also check out the following older introduction material to Equations
+You can also check out the following introduction material to Equations
 - [Intro](equations_intro.html): introduction to Equations, demonstrating
   its features
   ([source](https://raw.githubusercontent.com/mattam82/Coq-Equations/refs/heads/8.20/doc/equations_intro.v),
@@ -23,7 +23,7 @@ Dependent Pattern-Matching
 ==========================
 
 - [Vectors](examples/Examples.working_with_vectors.html): an example use to program 
-  with vectors *and* reason on the functions
+  with vectors *and* reason on the defined functions
   ([source](https://raw.githubusercontent.com/mattam82/Coq-Equations/refs/heads/8.20/examples/working_with_vectors.v)).
 
 - [Polynomials](examples/Examples.polynomials.html): a reflexive tactic for
