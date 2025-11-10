@@ -7,7 +7,6 @@
 (**********************************************************************)
 
 From Corelib Require Import Extraction.
-From Stdlib Require Import Unicode.Utf8_core.
 
 Declare ML Module "rocq-runtime.plugins.ltac".
 Declare ML Module "rocq-equations.plugin".

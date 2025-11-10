@@ -21,7 +21,8 @@
   "logpath:Equations"))
  (depends
    (ocaml (>= 4.10.0))
-   (rocq-prover (>= "9.0~"))
+   (rocq-core (>= "9.0~"))
+   (coq-core (>= "9.0~")) ; For coqc shims for dune 
    (ppx_optcomp :build)
    (ocaml-lsp-server :with-dev-setup)))
 
@@ -29,10 +30,12 @@
  (name rocq-equations-examples)
  (synopsis "Examples")
  (description "Examples of use of Equations")
- (depends rocq-equations))
+ (depends rocq-equations
+  (rocq-stdlib (>= "9.0~"))))
 
 (package
  (name rocq-equations-tests)
  (synopsis "Technical package to run tests")
  (description "Do not install")
- (depends rocq-equations))
+ (depends rocq-equations
+  (rocq-stdlib (>= "9.0~"))))

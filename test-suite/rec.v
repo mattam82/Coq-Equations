@@ -12,6 +12,8 @@ From Stdlib Require Import List Relations.
 From Stdlib Require Import Arith Wf_nat.
 From Stdlib Require Import Lia.
 
+Local Obligation Tactic := CoreTactics.equations_simpl.
+
 Module RecRel.
   Unset Equations With Funext.
 

@@ -24,7 +24,7 @@
 
 #[warnings="-deprecated-library-file-since-8.20"]
 From Stdlib Require Import Program Bvector List Relations.
-From Equations Require Import Equations Signature.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import Utf8.
 
 Set Keyed Unification.
@@ -102,6 +102,7 @@ Module KAxiom.
   (** The definition is however using an axiom equivalent to [K], so it cannot reduce
       on closed or open terms. *)
 End KAxiom.
+
 
 Module KDec.
   (** However, types enjoying a provable instance of the [K] principle are fine using the [With UIP]

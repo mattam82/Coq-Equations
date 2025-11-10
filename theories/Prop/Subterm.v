@@ -6,14 +6,13 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Stdlib Require Import Wf_nat Relations.
-From Stdlib Require Import Wellfounded Relation_Definitions.
-From Stdlib Require Import Relation_Operators Lexicographic_Product Wf_nat.
-From Stdlib Require Export Program.Wf FunctionalExtensionality.
+From Corelib Require Import Relation_Definitions.
+From Corelib Require Import Init.Wf.
+From Corelib Require Export Program.Wf.
 
 From Equations Require Import Init Signature.
 From Equations Require Import CoreTactics.
-From Equations.Prop Require Import Classes EqDec DepElim Constants.
+From Equations.Prop Require Import Classes EqDec DepElim Constants Relations FunctionalExtensionality.
 
 Generalizable Variables A R S B.
 
@@ -175,8 +174,11 @@ Hint Extern 0 (MR _ _ _ _) => red : rec_decision.
 #[export]
 Instance lt_wf : WellFounded lt := lt_wf.
 
+Theorem lt_succ_diag_r : forall n, n < S n.
+Proof. constructor. Qed.
+
 #[global]
-Hint Resolve PeanoNat.Nat.lt_succ_diag_r : rec_decision.
+Hint Resolve lt_succ_diag_r : rec_decision.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
@@ -186,7 +188,7 @@ Hint Resolve t_step : subterm_relation.
 
 Lemma clos_trans_stepr A (R : relation A) (x y z : A) :
   R y z -> clos_trans A R x y -> clos_trans A R x z.
-Proof. intros Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defined.
+Proof. intros Hyz Hxy. exact (@t_trans _ _ x y z Hxy (@t_step _ _ _ _ Hyz)). Defined.
 
 #[global]
 Hint Resolve clos_trans_stepr : subterm_relation.
@@ -201,7 +203,7 @@ Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
 Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
-  apply Transitive_Closure.wf_clos_trans;
+  apply wf_clos_trans;
   red; intros; simp_sigmas; on_last_hyp ltac:(fun H => depind H); constructor;
   intros; simp_sigmas; on_last_hyp ltac:(fun HR => depind HR);
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
@@ -283,8 +285,6 @@ Ltac rec_wf_rel recname x rel :=
   rec_wf_rel_aux recname 0 x rel ltac:(fun rechyp => idtac).
 
 (** Define non-dependent lexicographic products *)
-
-#[global] Arguments lexprod [A] [B] _ _.
 
 Section Lexicographic_Product.
 

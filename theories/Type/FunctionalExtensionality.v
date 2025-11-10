@@ -1,6 +1,6 @@
 Set Warnings "-notation-overridden".
 From Equations Require Import Init.
-From Stdlib Require Import CRelationClasses.
+From Corelib Require Import CRelationClasses.
 From Equations.Type Require Import Logic.
 
 (** The polymorphic equality type used by Equations when working with equality in Type. *)

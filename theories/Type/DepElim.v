@@ -10,7 +10,7 @@
 
 Set Warnings "-notation-overridden".
 
-From Stdlib Require Import Program.Tactics.
+From Corelib Require Import Program.Tactics.
 Require Export Equations.Init.
 From Equations Require Import Signature CoreTactics.
 From Equations.Type Require Import Logic.

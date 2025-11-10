@@ -413,6 +413,8 @@ Derive Signature for vec.
 Arguments nil {A}.
 Arguments cons {A n}.
 
+Declare Scope vector_scope.
+
 Notation "x :: v" := (cons x v) : vector_scope.
 Notation "[ ]" := nil : vector_scope.
 Notation "[ x ]" := (cons x nil) : vector_scope.

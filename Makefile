@@ -11,7 +11,7 @@ install:
 .PHONY: install
 
 test-suite:
-	dune build -p rocq-equations-tests
+	dune build -p rocq-equations,rocq-equations-examples,rocq-equations-tests
 
 .PHONY: test-suite
 
