@@ -214,9 +214,6 @@ Now the usual theory of append
 &nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
-&nbsp;&nbsp;<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">Lia</span>.<br/>
-
-<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">vrev_app</span> {<span class="id" title="var">n</span> <span class="id" title="var">m</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">n</span>) (<span class="id" title="var">w</span> : <span class="id" title="var">vector</span> <span class="id" title="var">m</span>) : (<span class="id" title="var">n</span> + <span class="id" title="var">m</span>, <span class="id" title="var">vrev</span> (<span class="id" title="var">v</span> ++ <span class="id" title="var">w</span>)) = (<span class="id" title="var">m</span> + <span class="id" title="var">n</span>, <span class="id" title="var">vrev</span> <span class="id" title="var">w</span> ++ <span class="id" title="var">vrev</span> <span class="id" title="var">v</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">v</span>; <span class="id" title="var">cbn</span>; <span class="id" title="var">simp</span> <span class="id" title="var">vrev</span> <span class="id" title="var">app</span> ⇒ //=.<br/>
