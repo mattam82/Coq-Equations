@@ -144,9 +144,6 @@ Section vectors.
     now rewrite vrev_acc_spec app_nil_r.
   Qed.
   
-  From Stdlib Require Import Lia.
-
-
   Lemma vrev_app {n m} (v : vector n) (w : vector m) : (n + m, vrev (v ++ w)) = (m + n, vrev w ++ vrev v).
   Proof.
     induction v; cbn; simp vrev app => //=.
