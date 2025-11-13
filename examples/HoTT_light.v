@@ -108,7 +108,7 @@ Bind Scope equiv_scope with Equiv.
 Reserved Infix "<~>" (at level 85).
 Notation "A <~> B" := (Equiv A B) (at level 85) : type_scope.
 
-Notation "f ^^-1" := (@equiv_inv _ _ f _) (at level 3).
+Notation "f ^^-1" := (@equiv_inv _ _ f _) (at level 1).
 
 (** *** Functional extensionality *)
 
@@ -191,14 +191,14 @@ Definition pr1_path {A} {P : A -> Type} {u v : sigma P} (p : u = v)
 : u.1 = v.1
   := ap (@pr1 _ _) p.
 
-Notation "p ..1" := (pr1_path p) (at level 3).
+Notation "p ..1" := (pr1_path p) (at level 1).
 
 Definition pr2_path {A} `{P : A -> Type} {u v : sigma P} (p : u = v)
 : p..1 # u.2 = v.2.
   destruct p. apply 1.
 Defined.
 
-Notation "p ..2" := (pr2_path p) (at level 3).
+Notation "p ..2" := (pr2_path p) (at level 1).
 
 Definition eta_path_sigma_uncurried {A} `{P : A -> Type} {u v : sigma P}
            (p : u = v) : path_sigma_uncurried _ _ (p..1, p..2) = p.

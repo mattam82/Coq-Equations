@@ -82,7 +82,7 @@ eq_sym x _ eq_refl := eq_refl.
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eq_trans x _ _ eq_refl eq_refl := eq_refl.
 
-Notation vector := Vector.t.
+Abbreviation vector := Vector.t.
 Derive Signature for eq vector.
 
 Module KAxiom.
@@ -154,6 +154,8 @@ sublist p (cons x xs) with p x := {
 (** Well-founded definitions: *)
 
 From Stdlib Require Import Arith Wf_nat.
+
+Create HintDb lt.
 
 (** One can declare new well-founded relations using instances of the [WellFounded] typeclass. *)
 #[local] Instance wf_nat : WellFounded lt := lt_wf.
@@ -477,7 +479,7 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
   (λ m', vzip (λ a, cons a))
   (vmake n nil).
 
-Require Import Examples.Fin.
+From Equations Require Import Examples.Fin.
 
 Generalizable All Variables.
 

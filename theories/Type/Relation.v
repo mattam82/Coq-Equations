@@ -220,6 +220,8 @@ Section Lexicographic_Exponentiation.
 
 End Lexicographic_Exponentiation.
 
+Create HintDb relations.
+
 #[export]
 Hint Unfold transp union: relations.
 #[export]

@@ -353,6 +353,8 @@ Ltac rewrite_sigma2_refl := rewrite_sigma2_refl_noK.
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
 
+Create HintDb equations.
+
 #[global]
 Hint Unfold solution_left solution_right
   eq_sym_invol eq_symmetry_dep

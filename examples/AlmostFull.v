@@ -1120,7 +1120,7 @@ Section SCT.
     (compute_transitive_closure_clause_2_aux_clause_2_new_candidate
        (@compute_transitive_closure) k n gs
        (compute_transitive_closure_clause_2_aux (@compute_transitive_closure) k n gs) g l acc).
-  Notation aux := compute_transitive_closure_clause_2_aux.
+  Abbreviation aux := compute_transitive_closure_clause_2_aux.
 
   Definition with_new_candid k n gs g l acc :=
     (compute_transitive_closure_clause_2_aux_clause_2_with_new_candidate (@compute_transitive_closure) k n gs

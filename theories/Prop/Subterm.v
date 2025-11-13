@@ -83,6 +83,8 @@ Proof.
   f_equal. apply Acc_pi.
 Qed.
 
+Create Rewrite HintDb Recursors.
+
 #[global]
 Hint Rewrite @FixWf_unfold_ext : Recursors.
 

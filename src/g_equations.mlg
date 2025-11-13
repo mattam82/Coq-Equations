@@ -272,7 +272,7 @@ GRAMMAR EXTEND Gram
      [ [ b = binders -> { b } ] ]
   ;
   equations_list:
-  [ [ 
+  [ "100" RIGHTA [ 
       e = equation ; check_eqns_ident ; sep = [ ";" -> { () } | -> { () } ]; eqns = equations_list -> { e :: eqns }
     | e = equation -> { [e] }
     | -> { [] } ]
@@ -295,7 +295,7 @@ GRAMMAR EXTEND Gram
    [ [ id = ident -> { (Some loc, id) } ] ] ;
 
   patterns: 
-   [ [ pat = lconstr ; sep = [ "|" -> { () } | "," -> { () } ]; pats = patterns -> { pat :: pats } 
+   [ "100" RIGHTA [ pat = lconstr ; sep = [ "|" -> { () } | "," -> { () } ]; pats = patterns -> { pat :: pats } 
     | pat = lconstr -> { [pat] }
     | -> { [] }
    ]];

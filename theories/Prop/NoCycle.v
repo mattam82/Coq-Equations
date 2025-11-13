@@ -31,7 +31,7 @@ Local Definition nle (x y : tree) := ((x <> y) * nlt x y)%type.
 Notation  "x ¬< y " := (nlt x y) (at level 80).
 Notation  "x ¬≤ y " := (nle x y) (at level 80).
 Lemma noCycle_tree : forall x y : tree, x = y -> nlt x y.
-Proof with trivial.
+Proof.
   intros x y <-. induction x as [|l Hl r Hr].
   * now simpl.
   * split. 
@@ -39,7 +39,7 @@ Proof with trivial.
       revert Hr. generalize r at 2 4 as r'. 
       induction r'; intros Hr.
 
-      split... intro H; noconf H.
+      split; trivial. intro H; noconf H.
       split. 
       + intro Heq; noconf Heq.
         now apply (fst (fst Hr)). 
@@ -47,7 +47,7 @@ Proof with trivial.
     { change (nle (node l r) l).
       revert Hl. generalize l at 2 4 as l'.
       induction l'; intros Hl'. 
-      split...
+      split; trivial.
       - now intro H; noconf H.
       - split.
         + intro Heq; noconf Heq;

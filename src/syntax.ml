@@ -275,7 +275,7 @@ let has_logical rec_type =
   List.exists (function Some (Logical _) -> true | _ -> false) rec_type
 
 let is_rec_call id c =
-  let id' = Label.to_id (Constant.label c) in
+  let id' = Constant.label c in
   Id.equal id id'
   
 let free_vars_of_constr_expr fid c =

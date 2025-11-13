@@ -70,7 +70,7 @@ Section Wf_Transitive_Closure.
   (** Original author: Bruno Barras, adapted to Type *)
   Context {A : Type} (R : relation A).
 
-  Notation trans_clos := (trans_clos R).
+  Abbreviation trans_clos := (trans_clos R).
 
   Lemma incl_trans_clos : inclusion R trans_clos.
     red; auto with relations.

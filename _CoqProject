@@ -5,6 +5,7 @@ src/META.rocq-equations.in
 -Q theories Equations
 -I theories
 -I examples
+-Q examples Equations.Examples
 
 CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
