@@ -616,7 +616,7 @@ let autounfold_heads db db' cl =
 type hintdb_name = string
 
 let rec db_of_constr c = match Constr.kind c with
-  | Const (c,_) -> Label.to_string (Constant.label c)
+  | Const (c,_) -> Id.to_string (Constant.label c)
   | App (c,al) -> db_of_constr c
   | _ -> assert false
 
@@ -703,7 +703,7 @@ let call_tac_on_ref tac c =
   ist, tac
 
 let solve_equation () =
-  Names.KerName.make (Lazy.force depelim_module) (Names.Label.make "solve_equation")
+  Names.KerName.make (Lazy.force depelim_module) (Id.of_string "solve_equation")
 
 let solve_equation_tac (c : Names.GlobRef.t) =
   let ist, tac = call_tac_on_ref (solve_equation ()) c in

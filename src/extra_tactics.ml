@@ -15,7 +15,7 @@ let decompose_app h h' c =
 
 let autounfold_ref gr =
   let db = match gr with
-    | GlobRef.ConstRef c -> Names.Label.to_string (Names.Constant.label c)
+    | GlobRef.ConstRef c -> Names.Id.to_string (Names.Constant.label c)
     | _ -> assert false
   in Eauto.autounfold ["core";db] Locusops.onConcl
 

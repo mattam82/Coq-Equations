@@ -158,7 +158,7 @@ let rec is_applied_to_structarg f is_rec lenargs =
 
 let is_user_obl sigma user_obls f =
   match EConstr.kind sigma f with
-  | Constr.Const (c, u) -> Id.Set.mem (Label.to_id (Constant.label c)) user_obls
+  | Constr.Const (c, u) -> Id.Set.mem (Constant.label c) user_obls
   | _ -> false
 
 let cmap_map f c =
@@ -202,7 +202,7 @@ let find_rec_call is_rec sigma protos f args =
   let fm (fhead,(f',filter), alias, idx, sign, arity) =
     if Constr.equal (EConstr.Unsafe.to_constr fhead) f then
       let f' = fst (Constr.destConst f) in
-      match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
+      match is_applied_to_structarg (Names.Constant.label f') is_rec
               (List.length args) with
       | Some true | None ->
         let signlen = List.length sign in

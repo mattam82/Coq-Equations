@@ -85,6 +85,7 @@ Ltac term_eq :=
     | |- ge _ _ => lia || absurd lia
   end.
 
+Create HintDb term.
 #[local] Hint Extern 4 => term_eq : term.
 
 Ltac term := typeclasses eauto with term core arith.
@@ -136,7 +137,7 @@ Proof. funelim (subst n n t) ; try rewrite H ; try rewrite H0; simp lift; auto.
   rewrite Nat.compare_gt_iff in Heq; absurd lia.
 Qed.
 #[local] Hint Rewrite substnn : subst.
-Notation ctx := (list type).
+Abbreviation ctx := (list type).
 
 Reserved Notation " Γ |-- t : A " (at level 70, t, A at next level).
 
@@ -550,7 +551,7 @@ From Stdlib Require Import Arith Wf_nat.
 #[local] Hint Constructors Subterm.lexprod : subterm_relation.
 
 Derive Signature for Acc.
-Notation lexicographic R S := (Subterm.lexprod _ _ R S).
+Abbreviation lexicographic R S := (Subterm.lexprod _ _ R S).
 
 Definition her_order : relation (type * term * term) :=
   lexicographic (lexicographic type_subterm term_subterm) term_subterm.  

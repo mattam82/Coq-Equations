@@ -74,6 +74,8 @@ Proof.
   apply funext; intros h. apply ap. apply Acc_prop.
 Qed.
 
+Create Rewrite HintDb Recursors.
+
 #[global]
 Hint Rewrite @FixWf_unfold_ext : Recursors.
 

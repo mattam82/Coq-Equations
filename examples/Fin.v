@@ -27,8 +27,8 @@ fog (fs f) := S (fog f).
 
 (** The injection preserves the number: *)
 Lemma fog_inj {n} (f : fin n) : fog f < n.
-Proof with auto with arith. intros.
-  depind f; simp fog...
+Proof. intros.
+  depind f; simp fog; auto with arith.
 Qed.
 
 (** Of course it has an inverse. *)
@@ -38,8 +38,8 @@ gof O := fz ;
 gof (S n) := fs (gof n).
 
 Lemma fog_gof n : fog (gof n) = n.
-Proof with auto with arith.
-  intros. funelim (gof n)... simp fog; congruence.
+Proof.
+  intros. funelim (gof n); auto with arith. simp fog; congruence.
 Qed.
 
 Equations fin_inj_one {n} (f : fin n) : fin (S n) :=
@@ -82,8 +82,8 @@ Arguments finle {n}.
 From Stdlib Require Vectors.Vector.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
-Notation vnil := Vector.nil.
-Notation vcons := Vector.cons.
+Abbreviation vnil := Vector.nil.
+Abbreviation vcons := Vector.cons.
 
 Equations nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
 nth (vcons a v) fz := a ;
@@ -98,6 +98,8 @@ tabulate (n:=(S n)) f := vcons (f fz) (tabulate (f ∘ fs)).
 Equations Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
 Below_fin P fz := unit ;
 Below_fin P (fs f) := (P _ f * Below_fin P f)%type.
+
+Create Rewrite HintDb rec_decision.
 
 #[export] Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : rec_decision.
 

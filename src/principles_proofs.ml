@@ -316,7 +316,7 @@ let aux_ind_fun info chop nested unfp unfids p =
             let last = Array.last args in
             let hd, args = decompose_app sigma last in
             (try let fn, args = destConst sigma hd in
-               let fnid = Label.to_id (Constant.label fn) in
+               let fnid = Constant.label fn in
                Some (CList.find (fun (p, _, _) -> Id.equal p fnid) nested)
              with DestKO | Not_found -> None)
           | _ -> None
@@ -326,7 +326,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           let fixtac =
             match prog.program_rec with
             | Some { rec_node = StructRec sr; rec_args } ->
-              tclTHENLIST [fix prog.program_info.program_id (Option.default 1 (annot_of_rec sr));
+              tclTHENLIST [FixTactics.fix prog.program_info.program_id (Option.default 1 (annot_of_rec sr));
                            tclDO rec_args intro]
             | _ -> Proofview.tclUNIT ()
           in
@@ -361,7 +361,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                 length of the enclosing context *)
              let newidx = match unfs with None -> idx | Some _ -> idx in
              true, observe "struct fix norec" (tclTHENLIST [(* unftac false; *)
-                 fix recid (succ newidx);
+                 FixTactics.fix recid (succ newidx);
                  intros
                  (* unftac true *)]))
         | _ -> false, intros
@@ -426,7 +426,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                                          str " lctx " ++ int (List.length lctx));
               let newidx = match unfs with None -> idx | Some _ -> idx in
               observe "struct fix" (tclTHENLIST [(* unftac false; *)
-                  fix recid (succ newidx);
+                  FixTactics.fix recid (succ newidx);
                   intros
                  (* unftac true *)])
           in fixtac)
@@ -738,8 +738,8 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
      in
      let prove_nested =
        tclDISPATCH
-         (List.map (function (id,NestedOn (Some (ann,_))) -> fix id (ann + 1)
-                           | (id,NestedOn None) -> fix id 1
+         (List.map (function (id,NestedOn (Some (ann,_))) -> FixTactics.fix id (ann + 1)
+                           | (id,NestedOn None) -> FixTactics.fix id 1
                          | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in

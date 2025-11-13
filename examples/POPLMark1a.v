@@ -87,14 +87,16 @@ lift_type_by f ttop       := ttop;
 lift_type_by f (tarr a b) := tarr (lift_type_by f a) (lift_type_by f b);
 lift_type_by f (tall a b) := tall (lift_type_by f a) (lift_type_by (scope_le_map f) b).
 
+Ltac tac := autorewrite with lift_var_by map_var scope_le_app in *; auto.
+
 Lemma lift_var_by_app : forall {b c} (p : scope_le b c) {a} (q : scope_le a b) t,
                           lift_var_by p (lift_var_by q t) = lift_var_by (scope_le_app q p) t.
-Proof with autorewrite with lift_var_by map_var scope_le_app in *; auto.
-  intros b c p; induction p; intros a q t; try destruct e...
+Proof.
+  intros b c p; induction p; intros a q t; try destruct e; tac.
   - rewrite IHp; auto.
   - generalize dependent p. generalize dependent t.
-    depind q; subst; intros...
-    rewrite IHp...
+    depind q; subst; intros; tac.
+    rewrite IHp; tac.
     specialize (IHp _ q).
     rewrite (map_var_b (lift_var_by (scope_le_app q p)) (fun t => lift_var_by p (lift_var_by q t))); eauto.
     rewrite <- map_var_a; auto.
@@ -125,12 +127,13 @@ lookup (n:=(S _)) (cons a Γ) FO     := lift_type_by (scope_le_S (scope_le_n eq_
 lookup (n:=(S _)) (cons a Γ) (FS x) := lift_type_by (scope_le_S (scope_le_n eq_refl)) (lookup Γ x)
 .
 
+Ltac tac ::= autorewrite with lookup scope_le_app env_app lift_var_by lift_type_by; auto.
 Lemma lookup_app {n} (Γ : env O (S n)) {m} (Δ : env (S n) (S m)) x :
   lookup (env_app Γ Δ) (lift_var_by (env_scope_le Δ) x) =
   lift_type_by (env_scope_le Δ) (lookup Γ x).
-Proof with autorewrite with lookup scope_le_app env_app lift_var_by lift_type_by; auto.
-  induction Δ; subst; simpl...
-  rewrite IHΔ... 
+Proof.
+  induction Δ; subst; simpl;tac.
+  rewrite IHΔ; tac.
 Qed.
 #[local] Hint Rewrite @lookup_app : lookup.
 
@@ -182,11 +185,13 @@ Proof.
   constructor; auto.
 Qed.
 
+Ltac tac ::= autorewrite with lift_type_by lift_var_by map_var lookup scope_le_app; auto.
+
 Lemma env_extend_lookup {b c} (Γ : env O b) (Δ : env O c) P :
   env_extend Γ Δ P -> forall x, lift_type_by P (lookup Γ x) = lookup Δ (lift_var_by P x).
-Proof with autorewrite with lift_type_by lift_var_by map_var lookup scope_le_app; auto.
-  intros A; depind A; intros x; depelim x...
-  all:rewrite <- IHA...
+Proof.
+  intros A; depind A; intros x; depelim x; tac.
+  all:rewrite <- IHA; tac.
 Qed.
 
 Lemma sa_weakening {b} (Γ : env O b) p q (A : sa Γ p q) :

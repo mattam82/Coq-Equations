@@ -25,7 +25,7 @@ Import Sigma_Notations.
 Import Id_Notations.
 
 (** Synonyms *)
-Notation inclusion R R' := (subrelation R R').
+Abbreviation inclusion R R' := (subrelation R R').
 
 #[export]
 Hint Constructors sum : relations.
@@ -38,7 +38,7 @@ Section Properties.
   Section Clos_Refl_Trans.
     Set Warnings "-notation-incompatible-prefix".
     Local Notation "R *" := (clos_refl_trans R)
-      (at level 8, no associativity, format "R *").
+      (at level 1, no associativity, format "R *").
 
     (** Correctness of the reflexive-transitive closure operator *)
 

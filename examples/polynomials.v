@@ -28,14 +28,14 @@ Require Import Stdlib.Vectors.VectorDef.
 
 Set Keyed Unification.
 
-Notation vector := Vector.t.
+Abbreviation vector := Vector.t.
 Arguments nil {A}.
 Arguments cons {A} _ {n}.
 
 Derive Signature for vector eq.
 Coercion Bool.Is_true : bool >-> Sortclass.
 
-Notation pack := Signature.signature_pack.
+Abbreviation pack := Signature.signature_pack.
 
 Lemma Is_true_irrel (b : bool) (p q : b) : p = q.
 Proof.
@@ -43,12 +43,6 @@ Proof.
   destruct p.
 Defined.
 #[local] Hint Resolve Is_true_irrel : core.
-Check Zpos.
-Check Zneg.
-Check positive.
-Check NoConfusion.
-About Signature.
-Check Signature.signature_pack.
 (* end hide *)
 
 (** We start with a simple definition deciding if some integer is equal
@@ -181,12 +175,14 @@ get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
     this proof is done by dependent induction on the polynomial [p].
     Note that the index of [p] rules out the [poly_z] case. *)
 
+Ltac tac := simp get_coef in *; auto.
+
 Lemma poly_nz {n} (p : poly false n) : exists m, IsNZ (get_coef m p).
-Proof with (autorewrite with get_coef; auto).
+Proof.
   intros. depind p.
-  exists mono_z...
-  destruct IHp. exists (mono_l x)...
-  destruct IHp2. exists (mono_s x)...
+  exists mono_z;tac.
+  destruct IHp. exists (mono_l x); tac.
+  destruct IHp2. exists (mono_s x); tac.
 Qed.
 
 Notation " ( x ; p ) " := (existT _ x p).
@@ -195,7 +191,7 @@ Theorem get_coef_eq {n} b1 b2
   (p1 : poly b1 n) (p2 : poly b2 n) :
   (forall (m : mono n), get_coef m p1 = get_coef m p2) ->
   (b1 ; p1) = (b2 ; p2) :> { null : _ & poly null n}.
-Proof with (simp get_coef in *; auto).
+Proof.
 
   (** Throughout the proof, we use the [simp] tactic defined by
       %\Equations% which is a wrapper around [autorewrite] using the hint
@@ -215,7 +211,7 @@ induction p1 as [ | z Hz | n b p1 | n b p1 IHp q1 IHq ]
            (elim i || elim Hz ||
             ltac:(repeat f_equal; auto)); fail)).
   - specialize (IHp1 _ p2). forward IHp1. intro m.
-    specialize (Hcoef (mono_l m))... clear Hcoef.
+    specialize (Hcoef (mono_l m)); tac. clear Hcoef.
 
     (** We first do an induction on [p1] and then eliminate (dependently)
         [p2], the first two branches need to consider variable-closed [p2]s
@@ -241,18 +237,18 @@ induction p1 as [ | z Hz | n b p1 | n b p1 IHp q1 IHq ]
     dependent elimination IHp1 as [eq_refl].
     reflexivity.
   - destruct (poly_nz q2) as [m HNZ].
-    specialize (Hcoef (mono_s m))...
+    specialize (Hcoef (mono_s m)); tac.
     rewrite <- Hcoef in HNZ; elim HNZ.
 
   - destruct (poly_nz q1) as [m HNZ].
-    specialize (Hcoef (mono_s m))...
+    specialize (Hcoef (mono_s m)); tac.
     rewrite Hcoef in HNZ; elim HNZ.
     
   - forward (IHq _ q2).
-    intro m. specialize (Hcoef (mono_s m))...
+    intro m. specialize (Hcoef (mono_s m));tac.
     apply f_equal.
     forward (IHp _ p2).
-    intro. specialize (Hcoef (mono_l m))...
+    intro. specialize (Hcoef (mono_l m)); tac.
     depelim IHp.
     now depelim IHq.
 Qed.
@@ -274,20 +270,20 @@ Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
     that evaluating a null polynomial always computes to [0], whichever
     valuation is used. *)
 (* begin hide *)
-Check eval.
+
 Lemma poly_nz_eval' : forall {n},
                           (forall (p : poly false n), exists v, IsNZ (eval p v)) ->
                           (forall (p : poly false (S n)),
                            exists v, forall m, exists x,
                                  IsNZ x /\
                                  (Z.abs (x * eval p (Vector.cons x v)) > Z.abs m)%Z).
-Proof with (simp eval).
+Proof.
   depind p.
   - destruct (H p) as [v Hv].
-    exists v; intros; exists (1 + Z.abs m)%Z...
+    exists v; intros; exists (1 + Z.abs m)%Z; simp eval.
     rewrite IsNZ_spec in Hv |- *. nia.
   - destruct (IHp2 H) as [v Hv]; exists v; intros.
-    destruct (Hv (Z.abs (eval p1 v) + Z.abs m)%Z) as [x [Hx0 Hx1]]; exists x...
+    destruct (Hv (Z.abs (eval p1 v) + Z.abs m)%Z) as [x [Hx0 Hx1]]; exists x; simp eval.
     split; auto. rewrite IsNZ_spec in Hx0.
     nia.
 Qed.
@@ -298,16 +294,16 @@ Lemma poly_nz_eval : forall {n},
            exists v, forall m, exists x,
                  IsNZ x /\
                  (Z.abs (x * eval p (Vector.cons x v)) > Z.abs m)%Z).
-Proof with (autorewrite with eval; auto using poly_nz_eval').
+Proof.
   depind n; match goal with
             | [ |- ?P /\ ?Q ] => assert (HP : P); [|split;[auto|]]
-            end...
-  depelim p; exists Vector.nil...
+            end; autorewrite with eval; auto using poly_nz_eval'.
+  depelim p; exists Vector.nil; autorewrite with eval; auto using poly_nz_eval'.
   - destruct IHn as [IHn1 IHn2]; depelim p.
-    + destruct (IHn1 p) as [v Hv]; exists (Vector.cons 0%Z v)...
+    + destruct (IHn1 p) as [v Hv]; exists (Vector.cons 0%Z v); autorewrite with eval; auto using poly_nz_eval'.
     + destruct (IHn2 p2) as [v Hv].
       destruct (Hv (eval p1 v)) as [x [_ Hx]].
-      exists (Vector.cons x v)...
+      exists (Vector.cons x v); autorewrite with eval; auto using poly_nz_eval'.
       rewrite IsNZ_spec; nia.
 Qed.
 (* end hide *)
@@ -510,17 +506,17 @@ Arguments mult {n} {b1} p1 {b2} p2.
 
 Lemma mult_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
     (eval p1 v * eval p2 v)%Z = eval (mult p1 p2).2 v.
-Proof with (autorewrite with mult mult_l mult_s eval; auto with zarith).
+Proof.
   Ltac Y := (autorewrite with mult mult_l mult_s eval; auto with zarith).
   depind p1; try (depind p2; intros; depelim v; Y; simpl; Y; fail).
-  depind p2; intros; depelim v; Y; simpl; Y; destruct (z * z0)%Z; simpl...
+  depind p2; intros; depelim v; Y; simpl; Y; destruct (z * z0)%Z; simpl; Y.
   - assert (mult_l_eval : forall {b2} (q : poly b2 (S n)) v h,
                eval (mult_l q (@mult _ _ p1)).2 (Vector.cons h v) =
                (eval q (Vector.cons h v) * eval p1 v)%Z).
     + depind q; intros; Y;
-        rewrite <- IHp1...
+        rewrite <- IHp1; Y.
       rewrite IHq2; auto; nia.
-    + intros; depelim v; Y; simpl; Y; rewrite mult_l_eval...
+    + intros; depelim v; Y; simpl; Y; rewrite mult_l_eval; Y.
   - assert (mult_s_eval :
               forall {b2} (q : poly b2 (S n)) v h,
                 let mp := mult_s q (@mult _ _ p1_1) (@mult _ _ p1_2) in
@@ -529,7 +525,7 @@ Proof with (autorewrite with mult mult_l mult_s eval; auto with zarith).
     + depind q; intros; Y; simpl; Y.
       rewrite <- IHp1_1, <- IHp1_2; Y; nia.
       rewrite <- IHp1_1. rewrite IHq2, <- IHp1_2; auto; Y; nia.
-    + intros; depelim v; Y; simpl; Y; rewrite mult_s_eval...
+    + intros; depelim v; Y; simpl; Y; rewrite mult_s_eval; Y.
 Qed.
 #[local] Hint Rewrite <- @mult_eval : eval.
 (** ** Boolean formulas
@@ -610,9 +606,10 @@ Equations poly_var {n} (f : Fin.t n) : poly false n :=
 (** We can show that evaluation of the corresponding polynomial corresponds to
     simply fetching the value at the index in the valuation. *)
 
+Ltac tac ::= autorewrite with poly_var eval in *; simpl; auto with zarith.
 Lemma var_eval : forall n f v, Vector.nth v f = eval (@poly_var n f) v.
-Proof with autorewrite with poly_var eval in *; simpl; auto with zarith.
-  induction f; depelim v; intros...
+Proof.
+  induction f; depelim v; intros; tac.
 Qed.
 #[local] Hint Rewrite <- @var_eval : eval.
 

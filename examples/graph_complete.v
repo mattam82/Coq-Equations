@@ -16,9 +16,9 @@ Equations neg (b : bool) : bool :=
 Definition neg_fib (x : bool) := Σ a : bool, neg_graph a x.
 #[local] Hint Resolve neg_graph_correct : core.
 Definition neg_graph_rec := neg_graph_rect.
+Register Scheme neg_graph_rec as rec_dep for neg_graph.
 
 Scheme neg_graph_rect_dep := Induction for neg_graph Sort Type.
-
 Lemma hfiber_graph : (Σ x : bool, hfiber neg x) <~> Σ x : bool, neg_fib x.
 Proof.
   unshelve refine {| equiv_fun := fun h => (h.1, _) |}.
