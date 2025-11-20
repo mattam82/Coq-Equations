@@ -130,7 +130,7 @@ let pplhs lhs =
   pp (pr_lhs env sigma lhs)
 
 let pr_body env sigma = function
-  | ConstrExpr rhs -> pr_constr_expr env sigma rhs
+  | ConstrExpr rhs -> pr_constr_expr ~flags:(Ppconstr.current_flags()) env sigma rhs
   | GlobConstr rhs -> pr_glob_constr_env env sigma rhs
   | Constr c -> str"<constr>"
 
@@ -139,7 +139,8 @@ let rec pr_rhs_aux env sigma = function
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_body env sigma rhs ++
                             spc () ++ pr_wheres env sigma where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
-                       prlist_with_sep (fun () -> str",") (pr_constr_expr env sigma) rhs ++
+                       prlist_with_sep (fun () -> str",")
+                         (pr_constr_expr ~flags:(Ppconstr.current_flags()) env sigma) rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env sigma s ++ str "}")
 
@@ -152,10 +153,11 @@ and pr_wheres env sigma (l, nts) =
 and pr_where env sigma (sign, eqns) =
   pr_proto env sigma sign ++ str "{" ++ pr_clauses env sigma eqns ++ str "}"
 and pr_proto env sigma ((_,id), _, _, l, t, ann) =
-  Id.print id ++ pr_binders env sigma l ++ pr_opt (fun t -> str" : " ++ pr_constr_expr env sigma t) t ++
+  let flags = Ppconstr.current_flags() in
+  Id.print id ++ pr_binders ~flags env sigma l ++ pr_opt (fun t -> str" : " ++ pr_constr_expr ~flags env sigma t) t ++
   (match ann with
      None -> mt ()
-   | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr env sigma t ++ pr_opt (pr_constr_expr env sigma) rel
+   | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr ~flags env sigma t ++ pr_opt (pr_constr_expr ~flags env sigma) rel
    | Some (Structural id) -> str"by struct " ++ pr_opt (fun x -> pr_id (snd x)) id)
 
 and pr_clause env sigma (Clause (loc, lhs, rhs)) =
@@ -165,9 +167,10 @@ and pr_clauses env sigma =
   prlist_with_sep fnl (pr_clause env sigma)
 
 let pr_user_lhs env sigma lhs =
+  let flags = Ppconstr.current_flags() in
   match lhs with
-  | SignPats x -> pr_constr_expr env sigma x
-  | RefinePats l -> prlist_with_sep (fun () -> str "|") (pr_constr_expr env sigma) l
+  | SignPats x -> pr_constr_expr ~flags env sigma x
+  | RefinePats l -> prlist_with_sep (fun () -> str "|") (pr_constr_expr ~flags env sigma) l
 
 let rec pr_user_rhs_aux env sigma = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
@@ -175,7 +178,8 @@ let rec pr_user_rhs_aux env sigma = function
                             pr_body env sigma rhs ++
                             spc () ++ pr_prewheres env sigma where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
-                       prlist_with_sep (fun () -> str ",") (pr_constr_expr env sigma) rhs ++
+                       prlist_with_sep (fun () -> str ",")
+                         (pr_constr_expr ~flags:(Ppconstr.current_flags()) env sigma) rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_user_clauses env sigma s ++ str "}")
 
@@ -185,7 +189,8 @@ and pr_prerhs_aux env sigma = function
                             pr_body env sigma rhs ++
                             spc () ++ pr_prewheres env sigma where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
-                       prlist_with_sep (fun () -> str ",") (pr_constr_expr env sigma) rhs ++
+                       prlist_with_sep (fun () -> str ",")
+                         (pr_constr_expr ~flags:(Ppconstr.current_flags()) env sigma) rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_preclauses env sigma s ++ str "}")
 
