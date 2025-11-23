@@ -1033,7 +1033,7 @@ let unfold_programs ~pm env evd flags rec_type progs =
       in
       let unfoldp = make_single_program env evd flags unfpi prob unfoldp.program_splitting None in
       let (unfoldp, term_info), pm, _pstate = define_program_immediate ~pm env evd 
-        UState.default_univ_decl [None] [] flags ~unfold:true unfoldp in
+        UState.default_sort_poly_decl [None] [] flags ~unfold:true unfoldp in
       let eqninfo =
         Principles_proofs.{ equations_id = i;
                             equations_where_map = where_map;
@@ -1691,7 +1691,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let univs, ubinders = Evd.univ_entry ~poly sigma in
     let uctx = match univs with
     | UState.Monomorphic_entry ctx ->
-      let () = Global.push_context_set ctx in
+      let () = Global.push_context_set QGraph.Internal ctx in
       Entries.Monomorphic_ind_entry
     | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
     in
@@ -1760,7 +1760,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     if not poly then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      (Global.push_context_set (Evd.universe_context_set !evd);
+      (Global.push_context_set QGraph.Internal (Evd.universe_context_set !evd);
        evd := Evd.from_env (Global.env ()))
     else ()
   in

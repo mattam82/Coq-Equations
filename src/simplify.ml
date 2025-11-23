@@ -344,7 +344,7 @@ let check_context ~where ?name env evd ctx =
         str "Equations build an ill-typed context: " ++ Printer.pr_rel_context env evd (EConstr.Unsafe.to_rel_context ctx) ++
         Himsg.explain_pretype_error env evd tyerr)
   in
-  let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  let check = Evd.check_poly_constraints evd (snd @@ Evd.universe_context_set sigma) in
   if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
     str (Option.default "(anonymous)" name))
 
@@ -362,7 +362,7 @@ let check_typed ~where ?name env evd c =
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
         Himsg.explain_pretype_error env evd tyerr)
   in
-  let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  let check = Evd.check_poly_constraints evd (snd @@ Evd.universe_context_set sigma) in
   if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
     str (Option.default "(anonymous)" name))
 
@@ -444,7 +444,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
       let tf = EConstr.mkRef (f, u) in
       let auctx = Environ.universes_of_global env f in
       let univs = UVars.AbstractContext.instantiate (EConstr.EInstance.kind !evd u) auctx in
-      let sigma = Evd.add_constraints !evd univs in
+      let sigma = Evd.add_poly_constraints QGraph.Internal !evd univs in
       let ty = Retyping.get_type_of env sigma tf in
       evd := sigma; tf, ty
     | None ->
