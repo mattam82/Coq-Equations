@@ -699,7 +699,7 @@ let subst_protos info s gr =
       begin try match na.binder_name with
         | Name id ->
           let cst = List.find (fun s -> CString.is_prefix (Id.to_string (Label.to_id (Constant.label s))) (Id.to_string id)) s in
-          let ctx, concl = decompose_prod_assum sigma b in
+          let ctx, concl = decompose_prod_decls sigma b in
           let lctx = List.tl ctx in
           let sigma, cstref = EConstr.fresh_global env sigma (GlobRef.ConstRef cst) in
           let appl = it_mkLambda_or_LetIn (mkApp (cstref, extended_rel_vect 1 lctx)) ctx in
