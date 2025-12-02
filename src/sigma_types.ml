@@ -148,7 +148,7 @@ let telescope env evd = function
               UnivProblem.Set.add (ULe (ts, l)) cstr
             in
             let cstrs = enforce_leq env !evd t (UnivProblem.Set.add (ULe (tyuniv, l)) UnivProblem.Set.empty) in
-            let () = evd := Evd.add_universe_constraints !evd cstrs in
+            let () = evd := Evd.add_constraints !evd cstrs in
             aux (sigty, l, (u, pred) :: tys) ds
         in aux (t, ts, []) tl
       in

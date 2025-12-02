@@ -516,7 +516,7 @@ let check_typed ~where ?name env evd c =
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
         Himsg.explain_pretype_error env evd tyerr)
   in
-  let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  let check = Evd.check_poly_constraints evd (snd @@ Evd.universe_context_set sigma) in
   if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
     str (Option.default "(anonymous)" name))
 
@@ -1218,7 +1218,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
          let cst, i = EConstr.destConst !evd hd in
          let ctx = Environ.constant_context (Global.env ()) cst in
          let ctx = gather_fresh_context !evd (EConstr.EInstance.kind sigma i) ctx in
-         evd := Evd.merge_sort_context_set Evd.univ_flexible !evd ctx;
+         evd := Evd.merge_sort_context_set Evd.univ_flexible QGraph.Internal !evd ctx;
          t)
       else t
     in
@@ -1299,7 +1299,7 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
   let all_hook ~pm hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
-    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.ustate sigma) udecl in
+    let uentry = UState.check_sort_poly_decl ~poly:flags.polymorphic (Evd.ustate sigma) udecl in
     let () =
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs, before simplify_evars " ++ pr_programs env sigma programs);

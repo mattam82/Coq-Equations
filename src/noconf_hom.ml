@@ -277,7 +277,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
       ~prefix:"Hom" ~tactic:(noconf_hom_tac ()) program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
- Splitting.define_programs ~pm env evd UState.default_univ_decl [None] [] data.Covering.flags [prog] hook
+ Splitting.define_programs ~pm env evd UState.default_sort_poly_decl [None] [] data.Covering.flags [prog] hook
 
 let () =
   let derive_no_confusion_hom ~pm env sigma ~poly v =

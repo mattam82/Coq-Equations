@@ -164,7 +164,7 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
   let evm, udecl =
     match eqs with
     | (((loc, i), udecl, _, _, _, _), _) :: _ ->
-      Constrintern.interp_univ_decl_opt env udecl
+      Constrintern.interp_sort_poly_decl_opt env udecl
     | _ -> assert false
   in
   let evd = ref evm in
