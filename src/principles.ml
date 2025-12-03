@@ -1691,7 +1691,8 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let univs, ubinders = Evd.univ_entry ~poly sigma in
     let uctx = match univs with
     | UState.Monomorphic_entry ctx ->
-      let () = Global.push_context_set QGraph.Internal ctx in
+      let () = Global.push_qualities QGraph.Internal (PConstraints.ContextSet.sort_context_set ctx) in (* XXX *)
+      let () = Global.push_context_set (PConstraints.ContextSet.univ_context_set ctx) in
       Entries.Monomorphic_ind_entry
     | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
     in
@@ -1760,8 +1761,10 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     if not poly then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      (Global.push_context_set QGraph.Internal (Evd.universe_context_set !evd);
-       evd := Evd.from_env (Global.env ()))
+      let uctx = Evd.universe_context_set !evd in
+      let () = Global.push_qualities QGraph.Internal (PConstraints.ContextSet.sort_context_set uctx) in (* XXX *)
+      let () = Global.push_context_set (PConstraints.ContextSet.univ_context_set uctx) in
+      evd := Evd.from_env (Global.env ())
     else ()
   in
   let eqns = CArray.map_of_list (fun (_, _, stmts) -> Array.make (List.length stmts) false) ind_stmts in
