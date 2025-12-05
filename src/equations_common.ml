@@ -625,7 +625,7 @@ let dbs_of_constrs = List.map db_of_constr
 (** Bindings to Coq *)
 
 let tacvar_arg h =
-  let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intro_pattern) 
+  let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intropattern)
     (CAst.make @@ Tactypes.IntroNaming (Namegen.IntroIdentifier h)) in
     TacGeneric (None, ipat)
 
