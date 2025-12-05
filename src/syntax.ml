@@ -283,7 +283,7 @@ let is_rec_call id c =
   let id' = Constant.label c in
   Id.equal id id'
   
-let free_vars_of_constr_expr fid c =
+let free_vars_of_constr_expr env sigma fid c =
   let rec aux bdvars l = function
     | { CAst.v = CRef (qid, _) } when qualid_is_ident qid ->
       let id = qualid_basename qid in
@@ -301,8 +301,8 @@ let free_vars_of_constr_expr fid c =
     | c -> fold_constr_expr_with_binders (fun a l -> a::l) aux bdvars l c
   in aux [] Id.Set.empty c
 
-let ids_of_pats id pats =
-  fold_left (fun ids p -> Id.Set.union ids (free_vars_of_constr_expr id p))
+let ids_of_pats env sigma id pats =
+  fold_left (fun ids p -> Id.Set.union ids (free_vars_of_constr_expr env sigma id p))
     Id.Set.empty pats
 
 type wf_rec_info =
@@ -514,12 +514,12 @@ let interp_eqn env sigma notations p ~avoid eqn =
     let loc, avoid, pats =
       match pat with
       | SignPats pat ->
-        let avoid = Id.Set.union avoid (ids_of_pats (Some p.program_id) [pat]) in
+        let avoid = Id.Set.union avoid (ids_of_pats env sigma (Some p.program_id) [pat]) in
         let loc = Constrexpr_ops.constr_loc pat in
         let avoid, pats = interp_pat notations avoid (Some (p, patnames)) pat in
         loc, avoid, pats
       | RefinePats pats ->
-        let patids = ids_of_pats None pats in
+        let patids = ids_of_pats env sigma None pats in
         (* let curpats = rename_away_from patids curpats in *)
         let avoid = Id.Set.union avoid patids in
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
@@ -537,7 +537,7 @@ let interp_eqn env sigma notations p ~avoid eqn =
     Pre_equation (pat, Option.map (interp_rhs' notations avoid) rhs)
   and interp_rhs' notations avoid = function
     | Refine (c, eqs) ->
-      let avoid = Id.Set.union avoid (ids_of_pats None c) in
+      let avoid = Id.Set.union avoid (ids_of_pats env sigma None c) in
       let interp c =
         let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
         if not (List.is_empty wheres) then
@@ -561,7 +561,7 @@ let interp_eqn env sigma notations p ~avoid eqn =
     | Empty i -> Empty i
   and interp_rhs notations avoid curpats = function
     | Refine (c, eqs) ->
-      let avoid = Id.Set.union avoid (ids_of_pats None c) in
+      let avoid = Id.Set.union avoid (ids_of_pats env sigma None c) in
       let interp c =
         let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
         if not (List.is_empty wheres) then

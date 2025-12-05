@@ -492,7 +492,7 @@ let dependent_elim_tac_expr ?patterns id : unit Proofview.tactic =
       match patterns with
       | None -> None
       | Some p ->
-        let avoid = Syntax.ids_of_pats None p in
+        let avoid = Syntax.ids_of_pats env sigma None p in
         Some (List.map (fun x -> List.hd (snd (Syntax.interp_pat env sigma [] ~avoid None x))) p)
     in dependent_elim_tac ?patterns id
   end
