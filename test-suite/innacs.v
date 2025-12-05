@@ -3,11 +3,11 @@ From Equations.Prop Require Import Equations.
 #[warnings="-warn-library-file-stdlib-vector"]
 From Stdlib Require Import Vector.
 From Equations.TestSuite Require Import fin.
-Notation vector := Vector.t.
+Abbreviation vector := Vector.t.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
-Notation vnil := Vector.nil.
-Notation vcons := Vector.cons.
+Abbreviation vnil := Vector.nil.
+Abbreviation vcons := Vector.cons.
 
 Fail Equations nth {A n} (v : vector A n) (f : fin n) : A :=
 nth (cons x v) ?(fz) := x;

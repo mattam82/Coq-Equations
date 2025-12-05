@@ -853,11 +853,10 @@ module Tactics =struct
   open Tacticals
 
   let curry_hyp id =
-  Proofview.Goal.enter begin fun gl ->
-    let sigma = Proofview.Goal.sigma gl in
+    enter_goal begin fun gl env sigma ->
     let decl = pf_get_hyp id gl in
     let (na, body, ty) = to_named_tuple decl in
-      match curry_hyp (pf_env gl) (project gl) id ty with
+      match curry_hyp env sigma id ty with
       | Some (prf, typ) ->
          (match body with
           | Some b ->

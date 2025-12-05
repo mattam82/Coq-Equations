@@ -216,6 +216,10 @@ let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
   evd := evm; t
 
+let enter_goal f =
+  let open Proofview.Goal in
+  enter (fun gl -> f gl (env gl) (sigma gl))
+
 let collapse_term_qualities uctx c =
   let open Sorts.Quality in
   let nf_rel r =
@@ -592,17 +596,18 @@ let unfold_head env sigma db t =
   unfold_head env sigma st t
 
 let autounfold_heads db db' cl =
-  Proofview.Goal.enter begin fun gl ->
-  let env = Proofview.Goal.env gl in
-  let sigma = Proofview.Goal.sigma gl in
+  let open Proofview.Goal in
+  enter begin fun gl ->
+  let env = env gl in
+  let sigma = sigma gl in
   let eq = 
-    (match cl with Some (id, _) -> pf_get_hyp_typ id gl | None -> pf_concl gl) 
+    (match cl with Some (id, _) -> pf_get_hyp_typ id gl | None -> concl gl)
   in
   let did, c' = 
-    match kind (project gl) eq with
+    match kind sigma eq with
     | App (f, [| ty ; x ; y |]) when EConstr.isRefX env sigma (Lazy.force logic_eq_type) f ->
-      let did, x' = unfold_head (pf_env gl) (project gl) db x in
-      let did', y' = unfold_head (pf_env gl) (project gl) db' y in
+      let did, x' = unfold_head env sigma db x in
+      let did', y' = unfold_head env sigma db' y in
       did && did', EConstr.mkApp (f, [| ty ; x' ; y' |])
     | _ -> false, eq
   in

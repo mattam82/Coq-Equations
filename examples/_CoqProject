@@ -1,4 +1,4 @@
--I ../src -R ../theories Equations -Q . Examples
+-I ../src -Q ../_build/default/theories Equations -Q ../_build/default/examples Equations.Examples
 INSTALLDEFAULTROOT = Equations
 Fin.v
 HoTT_light.v

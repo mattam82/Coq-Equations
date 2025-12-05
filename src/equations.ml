@@ -17,7 +17,6 @@ open Libnames
 open Vars
 open Tactics
 open Tacticals
-open Tacmach
 open Evarutil
 open Equations_common
 
@@ -243,25 +242,26 @@ let equations_interactive ~pm ~poly ~program_mode ?tactic opts eqs nt =
   | Some p -> pm, p
 
 let solve_equations_goal destruct_tac tac =
-  Proofview.Goal.enter begin fun gl ->
-  let concl = pf_concl gl in
+  let open Proofview.Goal in
+  enter_goal begin fun gl env sigma ->
+  let concl = concl gl in
   let intros, move, concl =
     let rec intros goal move = 
       match Constr.kind goal with
       | Prod ({binder_name=Name id}, _, t) ->
-         let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
+         let id = fresh_id_in_env Id.Set.empty id env in
          let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
          tclTHEN intro tac, move, goal
       | LetIn ({binder_name=Name id}, c, _, t) ->
          if String.equal (Id.to_string id) "target" then 
            tclIDTAC, move, goal
          else 
-           let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
+           let id = fresh_id_in_env Id.Set.empty id env in
            let tac, move, goal = intros (subst1 c t) (Some id) in
            tclTHEN intro tac, move, goal
       | _ -> tclIDTAC, move, goal
     in 
-    intros (to_constr (project gl) concl) None
+    intros (to_constr sigma concl) None
   in
   let move_tac = 
     match move with
@@ -269,19 +269,19 @@ let solve_equations_goal destruct_tac tac =
     | Some id' -> fun id -> move_hyp id (Logic.MoveBefore id')
   in
   let targetn, branchesn, targ, brs, b =
-    match kind (project gl) (of_constr concl) with
+    match kind sigma (of_constr concl) with
     | LetIn ({binder_name=Name target}, targ, _, b) ->
-        (match kind (project gl) b with
+        (match kind sigma b with
         | LetIn ({binder_name=Name branches}, brs, _, b) ->
-           target, branches, int_of_coq_nat (to_constr (project gl) targ),
-           int_of_coq_nat (to_constr (project gl) brs), b
+           target, branches, int_of_coq_nat (to_constr sigma targ),
+           int_of_coq_nat (to_constr sigma brs), b
 	| _ -> error "Unnexpected goal")
     | _ -> error "Unnexpected goal"
   in
   let branches, b =
     let rec aux n c =
       if n == 0 then [], c
-      else match kind (project gl) c with
+      else match kind sigma c with
       | LetIn ({binder_name=Name id}, br, brt, b) ->
 	  let rest, b = aux (pred n) b in
 	    (id, br, brt) :: rest, b

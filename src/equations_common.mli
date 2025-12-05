@@ -27,6 +27,8 @@ val equations_category : CWarnings.category
 
 val ppenv_sigma : (Environ.env -> Evd.evar_map -> 'a -> Pp.t) -> 'a -> unit
 
+val enter_goal : (Proofview.Goal.t -> Environ.env -> Evd.evar_map -> unit Proofview.tactic) -> unit Proofview.tactic
+
 (* Common flags *)
 type flags = {
   polymorphic : bool;

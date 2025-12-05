@@ -80,7 +80,7 @@ Instance nat_Recursor : Recursor nat :=
   { rec_type := fun n => forall P step, P n ;
     rec := fun n P step => rec_nat P n step }.
 
-Notation vector := Vector.t.
+Abbreviation vector := Vector.t.
 Import Vector.
 Arguments nil {A}.
 Arguments cons {A} _ {n}.
@@ -94,6 +94,8 @@ Equations Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) :
 Below_vector A P ?(0) [] := unit ;
 Below_vector A P _ (a :: v) :=
   ((P _ v) * Below_vector A P _ v)%type.
+
+Create Rewrite HintDb rec_decision.
 
 #[local] Hint Rewrite Below_vector_equation_2 : rec_decision.
 

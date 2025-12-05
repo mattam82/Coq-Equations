@@ -99,7 +99,7 @@ sublist p (cons x xs) with p x := {
   | false := skip (sublist p xs) }.
 
 (* Print Assumptions sublist. *)
-Notation vector := Vector.t.
+Abbreviation vector := Vector.t.
 (* Derive Subterm for nat.  *)
 Derive Signature for vector.
 Derive NoConfusion NoConfusionHom for vector.
@@ -110,6 +110,7 @@ From Stdlib Require Import Arith Wf_nat.
 #[local]
 Instance wf_nat : WellFounded lt := lt_wf.
 
+#[local] Create HintDb lt.
 #[local] Hint Resolve PeanoNat.Nat.lt_succ_diag_r : lt.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
@@ -632,8 +633,8 @@ Opaque vmap. Opaque vtail. Opaque nth.
 From Stdlib Require Vectors.Vector.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
-Notation vnil := Vector.nil.
-Notation vcons := Vector.cons.
+Abbreviation vnil := Vector.nil.
+Abbreviation vcons := Vector.cons.
 
 Equations nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
 nth (vcons a v) fz := a ;

@@ -329,9 +329,9 @@ eqt x ?(x) ?(x) eq_refl eq_refl := eq_refl.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} a {n} v : rename.
 
-Notation vector := Vector.t.
-Notation Vnil := Vector.nil.
-Notation Vcons := Vector.cons.
+Abbreviation vector := Vector.t.
+Abbreviation Vnil := Vector.nil.
+Abbreviationy Vcons := Vector.cons.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
   vector B n :=

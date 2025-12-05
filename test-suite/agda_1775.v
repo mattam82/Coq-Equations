@@ -27,7 +27,7 @@ Derive Signature NoConfusion NoConfusionHom for Vec.
 Arguments nil {_}.
 Arguments cons {_} _ _.
 
-Reserved Notation " x [ f ]= y " (at level 0, no associativity, f at next level, y at next level).
+Reserved Notation " x [ f ]= y " (at level 2, no associativity, f at next level, y at next level).
 Inductive at_eq {A : Set} : forall{n : nat}, Vec A n -> fin n -> A -> Set :=
 | here  : ∀ {n}     {x}   {xs : Vec A n}, at_eq (cons _ x xs) fin0 x
 | there : ∀ {n} {i : fin n} {x y} {xs : Vec A n} (H : xs [ i ]= x),

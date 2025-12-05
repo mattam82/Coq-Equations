@@ -1,6 +1,6 @@
 -I "../src"
--R . TestSuite
--R "../theories" Equations
+-R "../_build/default/test-suite" TestSuite
+-R "../_build/default/theories" Equations
 INSTALLDEFAULTROOT = 1
 attributes.v
 fin.v

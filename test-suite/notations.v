@@ -21,7 +21,7 @@ Equations plus : nat -> nat -> nat :=
 where "x + y" := (plus x y).
 
 (* Local notation in where *)
-Reserved Notation "x '++++' y" (at level 0).
+Reserved Notation "x '++++' y" (at level 20).
 
 Equations rev {A} : list A -> list A :=
   rev l := [] ++++ l

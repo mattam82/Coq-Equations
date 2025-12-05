@@ -8,7 +8,10 @@ open EConstr
 let decompose_app h h' c =
   Proofview.Goal.enter begin fun gl ->
     let f, args = EConstr.decompose_app (Proofview.Goal.sigma gl) c in
-    let fty = Tacmach.pf_hnf_type_of gl f in
+    let env = Proofview.Goal.env gl in
+    let sigma = Proofview.Goal.sigma gl in
+    let fty = Retyping.get_type_of env sigma f in
+    let fty = Reductionops.whd_all env sigma fty in
     let flam = mkLambda (EConstr.nameR (Id.of_string "f"), fty, mkApp (mkRel 1, args)) in
       (Proofview.tclTHEN (letin_tac None (Name h) f None allHyps)
          (letin_tac None (Name h') flam None allHyps)) end
