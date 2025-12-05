@@ -1249,7 +1249,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   in
   let cinfo = Declare.CInfo.make ~name:oblsid ~typ:ty () in
   let info = Declare.Info.make ~poly ~scope ~kind () in
-  let pm, _ =
+  let pm =
     Declare.Obls.add_definition ~pm ~cinfo ~info 
       ~obl_hook ~body:term ~uctx:(Evd.ustate sigma)
       ~reduce ~opaque:false oblsinfo in

@@ -160,7 +160,7 @@ let derive_eq_dec ~pm env sigma ~poly ind =
      let pm = Declare.Obls.add_definition ~pm ~cinfo ~info
               ~uctx:(Evd.ustate !evdref) ~opaque:false
               ~tactic:(eqdec_tac ()) [||]
-     in fst pm)
+     in pm)
     pm indsl
 
 let () =
