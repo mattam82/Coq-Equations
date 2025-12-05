@@ -1026,15 +1026,26 @@ let compute_rec_data env evars data lets subst p =
 
 exception UnfaithfulSplit of (Loc.t option * Pp.t)
 
-let rename_domain env sigma bindings map = 
+let rename_domain env sigma bindings map =
+  let open Context.Rel.Declaration in
   let { src_ctx = ctx; map_inst = p; tgt_ctx = ctx' } = map in
+  let avoid =
+    Int.Map.fold
+      (fun i (id, inacc, generated) acc -> if generated != Generated then Id.Set.add id acc else acc)
+      bindings Id.Set.empty
+  in
+  let ctx, avoid =
+    List.fold_right_map (fun decl avoid ->
+      let id = Namegen.next_name_away (get_name decl) avoid in
+      set_name (Name id) decl, Id.Set.add id avoid) ctx avoid in
   let fn rel decl = 
     match Int.Map.find rel bindings with
     | exception Not_found -> decl
-    | (id, _, gen) -> if gen != Generated then Context.Rel.Declaration.set_name (Name id) decl else decl
+    | (id, _, gen) -> if gen != Generated then set_name (Name id) decl else decl
   in 
   let rctx = CList.map_i fn 1 ctx in
   mk_ctx_map env sigma rctx p ctx'
+
 let rec eq_pat_mod_inacc env sigma p1 p2 =
   match p1, p2 with
   | (PRel i | PHide i), (PRel i' | PHide i') -> Int.equal i i'
@@ -1128,7 +1139,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
             | PUVar (id, gen) -> Some ((DAst.with_loc_val (fun ?loc _ -> loc) x, id, gen), PInac y)
             | _ -> None) acc) *)
         in
-        if !Equations_common.debug then Feedback.msg_debug (str "Renaming problem: " ++ 
+        if !Equations_common.debug then Feedback.msg_debug (str "Renaming problem: " ++
           hov 2 (pr_context_map env !evars prob) ++ str " with bindings " ++ 
           prlist_with_sep spc (fun (i, (x, inacc, gen)) -> str "Rel " ++ int i ++ str" = " ++ 
           pr_provenance ~with_gen:true (Id.print x) gen ++ 

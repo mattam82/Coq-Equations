@@ -163,7 +163,7 @@ val program_type : program_info -> EConstr.t
 
 val map_program_info : (EConstr.t -> EConstr.t) -> program_info -> program_info
 
-val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
+val ids_of_pats : Environ.env -> evar_map -> Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
 val pattern_of_glob_constr :
   Environ.env ->
