@@ -93,7 +93,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
         ~kind:(Decls.IsDefinition info.decl_kind)
         ()
     in
-    let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~tactic:tac ~uctx ~opaque:false [||] in
+    let pm = Declare.Obls.add_definition ~pm ~cinfo ~info ~tactic:tac ~uctx ~opaque:false [||] in
     pm
   in
   let pm = List.fold_left fold pm subproofs in
@@ -109,7 +109,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
       ()
   in
   let obl_hook = Declare.Hook.make_g hook_eqs in
-  let pm, _ =
+  let pm =
     Declare.Obls.add_definition ~pm ~cinfo ~info ~reduce:(fun x -> x)
       ~tactic:tac ~obl_hook ~opaque:false
       ~uctx:(Evd.ustate evd) [||]
