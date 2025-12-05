@@ -14,6 +14,7 @@ Set Warnings "-notation-overridden".
 From Stdlib Require Export Unicode.Utf8.
 From Stdlib Require Import Program.Tactics Setoid Relations.
 (** Switches to constants in Type *)
+
 From Equations.Type Require Import All.
 
 (** This imports the polymorphic identity and sigma types in Type and their associated notations. *)
@@ -227,7 +228,7 @@ Defined.
 Equations concat {A} {x y z : A} (e : x = y) (e' : y = z) : x = z :=
 concat 1 q := q.
 
-Notation "p @ q" := (concat p q) (at level 20).
+Notation "p @ q" := (concat p q) (at level 20, left associativity).
 
 Definition concat2 {A} {x y z : A} {p p' : x = y} {q q' : y = z} (h : p = p') (h' : q = q')
   : p @ q = p' @ q'

@@ -88,10 +88,9 @@ let needs_generalization gl id =
 
 let dependent_pattern ?(pattern_term=true) c =
   let open Tacmach in
-  Proofview.Goal.enter (fun gl ->
-  let sigma = Proofview.Goal.sigma gl in
-  let cr = Retyping.relevance_of_term (pf_env gl) sigma c in
-  let cty = Retyping.get_type_of (pf_env gl) sigma c in
+  enter_goal (fun gl env sigma ->
+  let cr = Retyping.relevance_of_term env sigma c in
+  let cty = Retyping.get_type_of env sigma c in
   let deps =
     match kind sigma cty with
     | App (f, args) ->
@@ -101,9 +100,8 @@ let dependent_pattern ?(pattern_term=true) c =
   in
   let varname c = match kind sigma c with
     | Var id -> id
-    | _ -> pf_get_new_id (Id.of_string (hdchar (pf_env gl) (project gl) c)) gl
+    | _ -> pf_get_new_id (Id.of_string (hdchar env sigma c)) gl
   in
-  let env = pf_env gl in
   let mklambda (ty, sigma) (c, id, r, cty) =
     let conclvar, sigma =
       Find_subterm.subst_closed_term_occ env sigma
@@ -117,7 +115,7 @@ let dependent_pattern ?(pattern_term=true) c =
     if pattern_term then (c, varname c, cr, cty) :: deps
     else deps
   in
-  let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
+  let concllda, evd = List.fold_left mklambda (Proofview.Goal.concl gl, sigma) subst in
   let conclapp = applistc concllda (List.rev_map (fun (c, _, _, _) -> c) subst) in
     convert_concl ~cast:false ~check:false conclapp DEFAULTcast)
 
@@ -221,10 +219,8 @@ let () =
              ; derive_fn = make_derive_ind fn })
 
 let pattern_call ?(pattern_term=true) c =
-  let open Tacmach in
-  Proofview.Goal.enter (fun gl ->
-  let env = pf_env gl in
-  let sigma = project gl in
+  let open Proofview.Goal in
+  enter_goal (fun gl env sigma ->
   let cr = Retyping.relevance_of_term env sigma c in
   let cty = Retyping.get_type_of env sigma c in
   let ids = Id.Set.of_list (ids_of_named_context (Proofview.Goal.hyps gl)) in
@@ -239,16 +235,16 @@ let pattern_call ?(pattern_term=true) c =
         ids
   in
   let mklambda ty (c, id, cty) =
-    let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl)
+    let conclvar, _ = Find_subterm.subst_closed_term_occ env sigma
       (Locus.AtOccs Locus.AllOccurrences) c ty in
       mkNamedLambda sigma (make_annot id cr) cty conclvar
   in
   let subst =
-    let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
+    let deps = List.rev_map (fun c -> (c, varname c, Retyping.get_type_of env sigma c)) deps in
       if pattern_term then (c, varname c, cty) :: deps
       else deps
   in
-  let concllda = List.fold_left mklambda (pf_concl gl) subst in
+  let concllda = List.fold_left mklambda (concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     (convert_concl ~cast:false ~check:false conclapp DEFAULTcast))
 
@@ -287,12 +283,11 @@ let whd_head env sigma t =
   | _ -> t
 
 let specialize_eqs ?with_block id =
-  Proofview.Goal.enter begin fun gl ->
+enter_goal begin fun gl env sigma ->
   let open Tacticals in
   let open Tacmach in
-  let env = pf_env gl in
   let ty = pf_get_hyp_typ id gl in
-  let evars = ref (project gl) in
+  let evars = ref sigma in
   let unif env ctx evars c1 c2 =
     match Evarconv.unify env !evars Conversion.CONV (it_mkLambda_or_subst env c1 ctx) (it_mkLambda_or_subst env c2 ctx) with
     | exception Evarconv.UnableToUnify _ -> false
@@ -371,7 +366,7 @@ open Proofview.Notations
 
 let specialize_eqs ?with_block id =
   let open Tacticals in
-  Proofview.Goal.enter begin fun gl ->
+  enter_goal begin fun gl env sigma ->
   Proofview.tclORELSE (clear [id] <*> Proofview.tclZERO Specialize) begin function
   | (Specialize, _) -> specialize_eqs ?with_block id
   | e -> tclFAIL (str "Specialization not allowed on dependent hypotheses")
@@ -380,10 +375,8 @@ let specialize_eqs ?with_block id =
 
 (* Dependent elimination using Equations. *)
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
-  Proofview.Goal.enter begin fun gl ->
-    let env = Proofview.Goal.env gl in
+  enter_goal begin fun gl env sigma ->
     let concl = Proofview.Goal.concl gl in
-    let sigma = Proofview.Goal.sigma gl in
     let sort = Retyping.get_sort_of env sigma concl in
     let env = Environ.reset_context env in
     let hyps = Proofview.Goal.hyps gl in
@@ -493,9 +486,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
   end
 
 let dependent_elim_tac_expr ?patterns id : unit Proofview.tactic =
-  Proofview.Goal.enter begin fun gl ->
-    let env = Proofview.Goal.env gl in
-    let sigma = Proofview.Goal.sigma gl in
+  enter_goal begin fun gl env sigma ->
     (* Interpret each pattern to then produce clauses. *)
     let patterns =
       match patterns with

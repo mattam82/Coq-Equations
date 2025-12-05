@@ -93,7 +93,7 @@ Notation "{ x & y }" := (@sigma _ (fun x : _ => y)%type) (x at level 99) : type_
 
 Notation "&( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-    (right associativity, at level 4,
+    (right associativity, at level 0,
      format "&( x ,  .. ,  y  ,  z )").
 #[local]
 Obligation Tactic := idtac.

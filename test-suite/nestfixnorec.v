@@ -188,6 +188,7 @@ Module IdealNoSec.
 
   Section P3_proof.
     Context {a} {a_C : C a}.
+    #[local] Create Rewrite HintDb In.
     #[local] Hint Rewrite in_app_iff : In.
     Lemma P3_test (t : tree a) : tree_P3 t = true ->
                                  exists x, In x (elements t) /\ P x = true.

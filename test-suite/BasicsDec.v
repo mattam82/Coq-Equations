@@ -13,7 +13,7 @@ Derive Signature for eq.
 Goal forall (U V : Type), Some U = Some V -> U = V.
 Proof. intros. depelim H. reflexivity. Qed.
 
-Notation vector := Vector.t.
+Abbreviation vector := Vector.t.
 
 Derive Signature NoConfusionHom for Vector.t.
 

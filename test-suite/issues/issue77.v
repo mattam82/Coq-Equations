@@ -1,7 +1,7 @@
 From Equations.Prop Require Import Equations.
 
 Require Vector.
-Notation vector := Vector.t.
+Abbreviation vector := Vector.t.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
