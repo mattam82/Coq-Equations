@@ -849,12 +849,11 @@ module Tactics =struct
   open Proofview.Notations
   open Proofview.Goal
 
-  open Tacmach
   open Tacticals
 
   let curry_hyp id =
-    enter_goal begin fun gl env sigma ->
-    let decl = pf_get_hyp id gl in
+    enter_goal begin fun env sigma _ ->
+    let decl = lookup_named id (named_context env) in
     let (na, body, ty) = to_named_tuple decl in
       match curry_hyp env sigma id ty with
       | Some (prf, typ) ->

@@ -73,13 +73,10 @@ let autorewrites b =
 exception RewriteSucceeded of EConstr.t
 
 let _rewrite_try_change tac = 
-  let open Proofview.Goal in
-  enter_goal (fun gl env sigma ->
-    let concl = concl gl in
-    Proofview.tclORELSE 
+  enter_goal (fun env sigma concl ->
+    Proofview.tclORELSE
       (Proofview.tclTHEN tac 
-      (enter_goal (fun gl env sigma ->
-          let concl' = Proofview.Goal.concl gl in
+      (enter_goal (fun env sigma concl' ->
           match Reductionops.infer_conv ~pb:Conversion.CONV env sigma concl concl' with
           | Some _ -> Proofview.tclZERO (RewriteSucceeded concl')
           | None -> Proofview.tclUNIT ())))
@@ -104,8 +101,8 @@ let autorewrite_one b =
   in aux rew_rules
 
 let revert_last =
-  enter_goal (fun gl env sigma ->
-    let hyp = List.hd (Proofview.Goal.hyps gl) in
+  enter_goal (fun env sigma _ ->
+    let hyp = List.hd (named_context env) in
     Generalize.revert [get_id hyp])
 
 (** fix generalization *)
@@ -234,9 +231,8 @@ let find_splitting_var sigma pats var constrs =
     Option.get (aux (rev pats) constrs)
 
 let rec intros_reducing () =
-  let open Proofview.Goal in
-  enter_goal (fun gl env sigma ->
-    match kind sigma (concl gl) with
+  enter_goal (fun env sigma concl ->
+    match kind sigma concl with
     | LetIn (_, _, _, _) -> tclTHEN hnf_in_concl (intros_reducing ())
     | Prod (_, _, _) -> tclTHEN intro (intros_reducing ())
     | _ -> tclIDTAC)
@@ -305,9 +301,7 @@ let local_tclTHEN_i = tclTHEN_i
 
 let aux_ind_fun info chop nested unfp unfids p =
   let rec solve_nested () =
-    let open Proofview.Goal in
-    enter_goal (fun gl env sigma ->
-        let concl = concl gl in
+    enter_goal (fun env sigma concl ->
         let nested_goal =
           match kind sigma concl with
           | App (ind, args) ->
@@ -446,8 +440,8 @@ let aux_ind_fun info chop nested unfp unfids p =
       in
       (observe "split"
         (tclTHEN_i
-           (enter_goal (fun gl env sigma ->
-              match kind sigma (Proofview.Goal.concl gl) with
+           (enter_goal (fun env sigma concl ->
+              match kind sigma concl with
               | App (ind, args) ->
                 let pats' = List.drop_last (Array.to_list args) in
                 let pats' =
@@ -463,7 +457,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                 Depelim.dependent_elim_tac (None, id)
               | _ -> tclFAIL (str"Unexpected goal in functional induction proof")))
            (fun i ->
-             enter_goal (fun gl env sigma ->
+             enter_goal (fun env sigma _ ->
               let split = nth splits (pred i) in
               let unfsplit = Option.map (fun s -> nth s (pred i)) unfs_splits in
               aux chop unfsplit unfids split))))
@@ -604,10 +598,8 @@ let aux_ind_fun info chop nested unfp unfids p =
           in
           let () = assert (List.length wheres = List.length unfswheres) in
           let tac =
-            let open Proofview.Goal in
-            enter_goal (fun gl env sigma ->
+            enter_goal (fun env sigma concl ->
               let subst =
-                let concl = concl gl in
                 let hd, args = decompose_app_list sigma concl in
                 let args = drop_last args in
                 let rec collect_vars acc c =
@@ -677,7 +669,7 @@ let observe_tac s tac =
                           if gls = 0 then (Feedback.msg_debug (str s ++ str "succeeded");
                                            Proofview.tclUNIT ())
              else
-               enter_goal begin fun gl env sigma ->
+               Proofview.Goal.enter begin fun gl ->
               let () = Feedback.msg_debug (str "Subgoal: " ++ Printer.Debug.pr_goal gl) in
               Proofview.tclUNIT ()
              end))
@@ -871,13 +863,13 @@ let is_primitive env evd ctx var =
   Inductive.is_primitive_record mspec
 
 let myreplace_by a1 a2 tac =
-  enter_goal (fun gl env sigma ->
+  enter_goal (fun env sigma _ ->
    if eq_constr sigma a1 a2 then Proofview.tclUNIT () else
      let ty = Retyping.get_type_of env sigma a1 in
      let sigma, eq = get_fresh sigma logic_eq_type in
      let eqty = mkApp (eq, [| ty; a1; a2 |]) in
      let sigma, _ = Typing.type_of env sigma eqty in
-     let na = pf_get_new_id (Id.of_string "Heq") gl in
+     let na = fresh_id_in_env (Id.of_string "Heq") env in
      Proofview.Unsafe.tclEVARS sigma <*>
        Tactics.assert_by (Name na) eqty tac <*>
        Equality.rewriteLR (mkVar na) <*>
@@ -898,9 +890,8 @@ let wrap tac before after =
   Proofview.Unsafe.tclSETENV (Global.env ())
 
 let solve_rec_eq simpltac subst =
-  let open Proofview.Goal in
-  enter_goal begin fun gl env sigma ->
-  match kind sigma (concl gl) with
+  enter_goal begin fun env sigma concl ->
+  match kind sigma concl with
   | App (eq, [| ty; x; y |]) ->
      let xf, _ = decompose_app sigma x and yf, _ = decompose_app sigma y in
      (try
@@ -1045,9 +1036,8 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace =
   let rec aux trace = match trace with
   | UnfSplit traces ->
       observe "split"
-        (let open Proofview.Goal in
-         enter_goal (fun gl env sigma ->
-         match kind sigma (concl gl) with
+        (enter_goal (fun env sigma concl ->
+         match kind sigma concl with
          | App (eq, [| ty; x; y |]) ->
             let f, pats' = decompose_app sigma y in
             let c, unfolds =
@@ -1061,15 +1051,14 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace =
   | UnfRefined (refinfo, trace) ->
         let id = pi1 refinfo.refined_obj in
         let rec reftac () =
-          let open Proofview.Goal in
-          enter_goal begin fun gl env sigma ->
-          match kind sigma (concl gl) with
+          enter_goal begin fun env sigma concl ->
+          match kind sigma concl with
           | App (f, [| ty; term1; term2 |]) ->
              let cst, _ = destConst sigma (fst (decompose_app sigma refinfo.refined_term)) in
              let f1, arg1 = destApp sigma term1 and f2, arg2 = destApp sigma term2 in
              let _, posa1, a1 = find_helper_arg env sigma info f1 arg1
              and ev2, posa2, a2 = find_helper_arg env sigma info f2 arg2 in
-             let id = pf_get_new_id id gl in
+             let id = fresh_id_in_env id env in
              if Environ.QConstant.equal env ev2 cst then
                tclTHENLIST
                [myreplace_by a1 a2 (tclTHENLIST [solve_eq subst]);
@@ -1087,7 +1076,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace =
   | UnfComputeProgram (data, lctx) ->
        let wheretac acc (wp, unfwp, assoc, id) = match Nametab.locate_constant (Libnames.qualid_of_ident id) with
        | cst ->
-         enter_goal (fun gl env sigma ->
+         enter_goal (fun env sigma _ ->
          let evd = ref sigma in
          (* let () = Feedback.msg_debug (str"Unfold where assoc: " ++
           *                              Printer.pr_econstr_env env !evd assoc) in
@@ -1119,7 +1108,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace =
   aux trace
 
 let prove_unfolding_lemma_aux info where_map my_simpl subst p unfp =
-  enter_goal begin fun gl env sigma ->
+  enter_goal begin fun env sigma _ ->
     let f_cst = headcst sigma p.program_term
     and funf_cst = headcst sigma unfp.program_term in
     let unfolds =
@@ -1162,14 +1151,14 @@ let prove_unfolding_lemma_aux info where_map my_simpl subst p unfp =
           (observe "program fixpoint" fixtac)
           (tclORELSE
             (tclSOLVE
-              [enter_goal (fun gl env sigma -> set_opaque ();
+              [Proofview.Goal.enter (fun gl -> set_opaque ();
                 observe "extensionality proof"
                 ((prove_unfolding info where_map f_cst funf_cst subst info.base_id info.base_id etrace)))])
             (tclFAIL
               (Pp.str "Could not prove extensionality automatically"))))
         | None -> observe "program fixpoint" fixtac
         end;
-        (enter_goal (fun gl env sigma -> set_opaque ();
+        (enter_goal (fun env sigma _ -> set_opaque ();
           (observe "program"
             ((prove_unfolding info where_map f_cst funf_cst subst info.base_id (info.base_id ^ "_unfold") trace)))))]
   end
@@ -1199,7 +1188,7 @@ let prove_unfolding_sublemma info where_map f_cst funf_cst (subst, p, unfp) =
   prove_unfolding_lemma_aux info where_map my_simpl subst p unfp
 
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
-  enter_goal begin fun gl env sigma ->
+  enter_goal begin fun env sigma _ ->
   let () =
     if !Equations_common.debug then
       let open Pp in
@@ -1223,7 +1212,7 @@ let ind_elim_tac indid inds mutinds info ind_fun =
   let open Proofview in
   let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.base_id] in
   let prove_methods c =
-    enter_goal (fun gl env sigma ->
+    enter_goal (fun env sigma _ ->
         let sigma, _ = Typing.type_of env sigma c in
         observe "prove_methods" (
         tclTHENLIST [Proofview.Unsafe.tclEVARS sigma;
@@ -1232,8 +1221,8 @@ let ind_elim_tac indid inds mutinds info ind_fun =
                      observe "solve methods" (eauto ~depth:None)]))
   in
   let rec applyind leninds args =
-    enter_goal (fun gl env sigma ->
-    match leninds, kind sigma (Goal.concl gl) with
+    enter_goal (fun env sigma concl ->
+    match leninds, kind sigma concl with
     | 0, _ ->
       let app = applistc indid (List.rev args) in
       let sigma, ty = Typing.type_of env sigma app in

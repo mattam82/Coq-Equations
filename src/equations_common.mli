@@ -27,7 +27,7 @@ val equations_category : CWarnings.category
 
 val ppenv_sigma : (Environ.env -> Evd.evar_map -> 'a -> Pp.t) -> 'a -> unit
 
-val enter_goal : (Proofview.Goal.t -> Environ.env -> Evd.evar_map -> unit Proofview.tactic) -> unit Proofview.tactic
+val enter_goal : (Environ.env -> Evd.evar_map -> EConstr.t -> unit Proofview.tactic) -> unit Proofview.tactic
 
 (* Common flags *)
 type flags = {
@@ -64,7 +64,7 @@ type 'a located = 'a Loc.located
 
 (** Fresh names *)
 val fresh_id_in_env :
-  Names.Id.Set.t -> Names.Id.t -> Environ.env -> Names.Id.t
+  ?avoid:Names.Id.Set.t -> Names.Id.t -> Environ.env -> Names.Id.t
 
 (** Refer to a tactic *)
 val tac_of_string :
