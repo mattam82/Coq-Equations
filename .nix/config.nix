@@ -106,7 +106,7 @@ with builtins; with (import <nixpkgs> {}).lib;
     ## reverse dependency of a job flagged as "main-job" (see above).
 
     ## Run on push on following branches (default [ "master" ])
-    # push-branches = [ "master" "branch2" ];
+    push-branches = [ "main" ];
   };
 
   ## Cachix caches to use in CI
