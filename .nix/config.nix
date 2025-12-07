@@ -114,7 +114,9 @@ with builtins; with (import <nixpkgs> {}).lib;
   cachix.coq = {};
   cachix.math-comp = {};
   cachix.coq-community = {};
-  
+
+  cachix.equations.authToken = "CACHIX_AUTH_TOKEN";
+
   ## If you have write access to one of these caches you can
   ## provide the auth token or signing key through a secret
   ## variable on GitHub. Then, you should give the variable
