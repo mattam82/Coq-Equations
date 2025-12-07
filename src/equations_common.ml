@@ -218,7 +218,7 @@ let e_type_of env evd t =
 
 let enter_goal f =
   let open Proofview.Goal in
-  enter (fun gl -> f gl (env gl) (sigma gl))
+  enter (fun gl -> f (env gl) (sigma gl) (concl gl))
 
 let collapse_term_qualities uctx c =
   let open Sorts.Quality in
@@ -320,8 +320,8 @@ let rec int_of_coq_nat c =
   | App (f, [| arg |]) -> succ (int_of_coq_nat arg)
   | _ -> 0
 
-let fresh_id_in_env avoid id env =
-  Namegen.next_ident_away_in_goal (Global.env ()) id (Id.Set.union avoid (Id.Set.of_list (ids_of_named_context (named_context env))))
+let fresh_id_in_env ?(avoid=Id.Set.empty) id env =
+  Namegen.next_ident_away id (Id.Set.union avoid (Id.Set.of_list (ids_of_named_context (named_context env))))
 
 let coq_fix_proto = (find_global "fixproto")
 

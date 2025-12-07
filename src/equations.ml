@@ -242,21 +242,19 @@ let equations_interactive ~pm ~poly ~program_mode ?tactic opts eqs nt =
   | Some p -> pm, p
 
 let solve_equations_goal destruct_tac tac =
-  let open Proofview.Goal in
-  enter_goal begin fun gl env sigma ->
-  let concl = concl gl in
+  enter_goal begin fun env sigma concl ->
   let intros, move, concl =
     let rec intros goal move = 
       match Constr.kind goal with
       | Prod ({binder_name=Name id}, _, t) ->
-         let id = fresh_id_in_env Id.Set.empty id env in
+         let id = fresh_id_in_env id env in
          let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
          tclTHEN intro tac, move, goal
       | LetIn ({binder_name=Name id}, c, _, t) ->
          if String.equal (Id.to_string id) "target" then 
            tclIDTAC, move, goal
          else 
-           let id = fresh_id_in_env Id.Set.empty id env in
+           let id = fresh_id_in_env id env in
            let tac, move, goal = intros (subst1 c t) (Some id) in
            tclTHEN intro tac, move, goal
       | _ -> tclIDTAC, move, goal
