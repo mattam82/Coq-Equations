@@ -147,7 +147,7 @@ let mutual_fix li l =
       match li with
       | [] ->
          List.mapi (fun i ev -> match Evd.evar_ident ev sigma with
-                                | Some id -> id
+                                | Some id -> Libnames.basename id
                                 | None -> Id.of_string ("fix_" ^ string_of_int i)) gls
       | l -> List.map Id.of_string l
     in
