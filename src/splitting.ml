@@ -1299,7 +1299,7 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
   let all_hook ~pm hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
-    let uentry = UState.check_sort_poly_decl ~poly:flags.polymorphic (Evd.ustate sigma) udecl in
+    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.ustate sigma) udecl in
     let () =
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs, before simplify_evars " ++ pr_programs env sigma programs);

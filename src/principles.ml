@@ -1033,7 +1033,7 @@ let unfold_programs ~pm env evd flags rec_type progs =
       in
       let unfoldp = make_single_program env evd flags unfpi prob unfoldp.program_splitting None in
       let (unfoldp, term_info), pm, _pstate = define_program_immediate ~pm env evd 
-        UState.default_sort_poly_decl [None] [] flags ~unfold:true unfoldp in
+        UState.default_univ_decl [None] [] flags ~unfold:true unfoldp in
       let eqninfo =
         Principles_proofs.{ equations_id = i;
                             equations_where_map = where_map;

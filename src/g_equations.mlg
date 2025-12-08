@@ -322,7 +322,7 @@ GRAMMAR EXTEND Gram
     ] ]
   ;
   proto:
-   [ [ id = lident; d = OPT sort_poly_decl; l = binders2; ":"; t = Constr.lconstr;
+   [ [ id = lident; d = OPT univ_decl; l = binders2; ":"; t = Constr.lconstr;
        reca = wf_annot; ":="; eqs = sub_equations -> { (fun r -> ((id, d, r, l, Some t, reca), eqs)) }
    ] ]
   ;
