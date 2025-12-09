@@ -214,7 +214,7 @@ val define_programs :
   pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ref ->
-  UState.sort_poly_decl ->
+  UState.universe_decl ->
   Syntax.rec_type ->
   EConstr.rel_context ->
   Equations_common.flags ->
@@ -227,7 +227,7 @@ val define_program_immediate :
   pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ref ->
-  UState.sort_poly_decl ->
+  UState.universe_decl ->
   Syntax.rec_type ->
   EConstr.rel_context ->
   Equations_common.flags ->
