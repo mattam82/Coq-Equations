@@ -710,7 +710,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
     List.map (fun (p, prog, fix) ->
         let ty = p.Syntax.program_orig_type in
         let kn, (evm, term) =
-          declare_constant p.program_id fix (Some ty) ~poly:flags.polymorphic
+          declare_constant p.program_id fix (Some ty) ~poly:flags.poly
             !evd ~kind:Decls.(IsDefinition Fixpoint)
         in
         evd := evm;
@@ -723,7 +723,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
         let ty = p.Syntax.program_orig_type in
         let body = Vars.substl args fix in
         let kn, (evm, e) =
-          declare_constant p.program_id body (Some ty) ~poly:flags.polymorphic
+          declare_constant p.program_id body (Some ty) ~poly:flags.poly
             !evd ~kind:Decls.(IsDefinition Fixpoint) in
         evd := evm;
         Impargs.declare_manual_implicits false (GlobRef.ConstRef kn) p.program_impls;
@@ -799,7 +799,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
        let (cst, (evm, e)) =
          Equations_common.declare_constant p.program_id
            term (Some (p.Syntax.program_orig_type))
-           ~poly:flags.polymorphic !evd ~kind:Decls.(IsDefinition Definition)
+           ~poly:flags.poly !evd ~kind:Decls.(IsDefinition Definition)
        in
        evd := evm;
        let () = Impargs.declare_manual_implicits false (GlobRef.ConstRef cst) p.program_impls in
@@ -829,7 +829,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
                 let term = it_mkLambda_or_LetIn term after in
                 let kn, (evm, e) =
                   declare_constant (Nameops.add_suffix p.program_id "_functional") term None
-                    ~poly:flags.polymorphic
+                    ~poly:flags.poly
                     !evd ~kind:Decls.(IsDefinition Fixpoint)
                 in
                 evd := evm; (p, (prob, r, s', after, e)))
@@ -964,7 +964,7 @@ let define_one_program_constants flags env0 isevar udecl unfold p =
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id (Id.of_string "functional" :: path))
           term (Some ty)
-          ~poly:flags.polymorphic !isevar ~kind:Decls.(IsDefinition Definition)
+          ~poly:flags.poly !isevar ~kind:Decls.(IsDefinition Definition)
       in
       let () = helpers := (cst, (0,0)) :: !helpers in
       let env = Global.env () in
@@ -993,7 +993,7 @@ let define_one_program_constants flags env0 isevar udecl unfold p =
         let (cst, (evm, e)) =
           Equations_common.declare_constant (path_id ~unfold where_path)
             term' None(* (Some (program_type where_program)) *)
-            ~poly:flags.polymorphic !isevar ~kind:Decls.(IsDefinition Definition)
+            ~poly:flags.poly !isevar ~kind:Decls.(IsDefinition Definition)
         in
         let () = helpers := (cst, (0,0)) :: !helpers in
         let env = Global.env () in
@@ -1022,7 +1022,7 @@ let define_one_program_constants flags env0 isevar udecl unfold p =
       let t, ty = term_of_tree env isevar sort rest' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id ~unfold info.refined_path)
-          t (Some ty) ~poly:flags.polymorphic !isevar ~kind:Decls.(IsDefinition Definition)
+          t (Some ty) ~poly:flags.poly !isevar ~kind:Decls.(IsDefinition Definition)
       in
       let () = helpers := (cst, info.refined_arg) :: !helpers in
       evm, Refined (lhs, { info with refined_term = e }, rest')
@@ -1061,7 +1061,7 @@ type term_info = {
   term_id : Names.GlobRef.t;
   term_ustate : UState.t;
   base_id : string;
-  poly : bool;
+  poly : PolyFlags.t;
   scope : Locality.definition_scope;
   decl_kind : Decls.definition_object_kind;
   helpers_info : (Constant.t * (int * int)) list;
@@ -1074,7 +1074,7 @@ type compiled_program_info = {
     program_split_info : term_info }
 
 
-let is_polymorphic info = info.poly
+let is_polymorphic info = PolyFlags.univ_poly info.poly
 let warn_complete id =
   str "Equations definition " ++ Id.print id ++ str" is complete and requires no further proofs. " ++
   str "Use the \"Equations\" command to define it."
@@ -1087,7 +1087,7 @@ let warn_complete =
     ~default:CWarnings.Enabled
     warn_complete
 
-let solve_equations_obligations ~pm flags recids loc i sigma hook =
+let solve_equations_obligations ~pm (flags : Equations_common.flags) recids loc i sigma hook =
   let scope = Locality.(Global ImportNeedQualified) in
   let kind = Decls.(IsDefinition Definition) in
   let evars = Evar.Map.bindings (Evd.undefined_map sigma) in
@@ -1125,7 +1125,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
       types
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
-  let info = Declare.Info.make ~kind ~scope ~poly:flags.polymorphic () in
+  let info = Declare.Info.make ~kind ~scope ~poly:flags.poly () in
   let lemma = Declare.Proof.start_equations ~name:i ~hook ~types ~info sigma tele in
   (* Should this use Lemmas.by *)
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
@@ -1170,8 +1170,8 @@ let gather_fresh_context sigma u octx =
 
 let swap (x, y) = (y, x)
 
-let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
-  let poly = flags.polymorphic in
+let solve_equations_obligations_program ~pm (flags : flags) recids loc i sigma hook =
+  let poly = flags.poly in
   let scope = Locality.(Global ImportNeedQualified) in
   let kind = Decls.(IsDefinition Definition) in
   let env = Global.env () in
@@ -1283,7 +1283,7 @@ let rec_type_ids =
             | Some (Logical (_, ids)) -> [snd ids]
             | None -> [])
 
-let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Declare.OblState.t * Declare.Proof.t option  =
+let define_programs (type a) ~pm env evd udecl is_recursive fixprots (flags : flags) ?(unfold=false) programs : a hook -> a * Declare.OblState.t * Declare.Proof.t option  =
   fun hook ->
   let call_hook ~pm recobls p helpers uctx scope gr (hook : pm:Declare.OblState.t -> program -> term_info -> a * Declare.OblState.t) : a * Declare.OblState.t =
     (* let l =
@@ -1292,14 +1292,14 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
     let kind = Decls.Definition in
     let baseid = Id.to_string (program_id p) in
     let term_info = { term_id = gr; term_ustate = uctx;
-                      base_id = baseid; helpers_info = helpers; poly = flags.polymorphic; scope; decl_kind = kind;
+                      base_id = baseid; helpers_info = helpers; poly = flags.poly; scope; decl_kind = kind;
                       comp_obls = recobls; user_obls = Id.Set.empty } in
     hook ~pm p term_info
   in
   let all_hook ~pm hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
-    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.ustate sigma) udecl in
+    let uentry = UState.check_univ_decl ~poly:flags.poly (Evd.ustate sigma) udecl in
     let () =
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs, before simplify_evars " ++ pr_programs env sigma programs);

@@ -8,7 +8,7 @@
 
 val derive_subterm :
   pm:Declare.OblState.t ->
-  Environ.env -> Evd.evar_map -> poly:bool -> Names.inductive * EConstr.EInstance.t ->
+  Environ.env -> Evd.evar_map -> poly:PolyFlags.t -> Names.inductive * EConstr.EInstance.t ->
   Declare.OblState.t
 
-val derive_below : Environ.env -> Evd.evar_map -> poly:bool -> Names.inductive * EConstr.EInstance.t -> unit
+val derive_below : Environ.env -> Evd.evar_map -> poly:PolyFlags.t -> Names.inductive * EConstr.EInstance.t -> unit

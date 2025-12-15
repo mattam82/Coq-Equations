@@ -35,6 +35,6 @@ val vars_of_pars : named_context -> constr array
 
 val derive_eq_dec :
   pm:Declare.OblState.t ->
-  Environ.env -> Evd.evar_map -> poly:bool ->
+  Environ.env -> Evd.evar_map -> poly:PolyFlags.t ->
   Names.inductive * EInstance.t ->
   Declare.OblState.t

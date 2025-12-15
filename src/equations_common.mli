@@ -31,7 +31,7 @@ val enter_goal : (Environ.env -> Evd.evar_map -> EConstr.t -> unit Proofview.tac
 
 (* Common flags *)
 type flags = {
-  polymorphic : bool;
+  poly : PolyFlags.t;
   open_proof : bool;
   with_eqns : bool;
   with_ind : bool;
@@ -141,7 +141,7 @@ val get_class : Evd.evar_map -> constr -> Typeclasses.typeclass * EConstr.EInsta
 
 val make_definition :
   ?opaque:'a ->
-  ?poly:bool ->
+  ?poly:PolyFlags.t ->
   Evd.evar_map ->
   ?types:constr -> constr -> Evd.evar_map * Declare.proof_entry
 
@@ -162,14 +162,14 @@ val declare_constant :
   Id.t ->
   constr ->
   constr option ->
-  poly:bool ->
+  poly:PolyFlags.t ->
   kind:Decls.logical_kind ->
   Evd.evar_map ->
   Constant.t * (Evd.evar_map * EConstr.t)
 
 val declare_instance :
   Names.Id.t ->
-  poly:bool ->
+  poly:PolyFlags.t ->
   Evd.evar_map ->
   rel_context ->
   Typeclasses.typeclass peuniverses -> constr list -> Constant.t * (Evd.evar_map * EConstr.t)

@@ -243,7 +243,7 @@ val compute_rec_data :
 
 val interp_arity : Environ.env ->
   Evd.evar_map ref ->
-  poly:bool ->
+  poly:PolyFlags.t ->
   is_rec:bool ->
   with_evars:bool ->
   Vernacexpr.notation_declaration list ->

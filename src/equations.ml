@@ -32,7 +32,7 @@ let inline_helpers i =
   let l = List.map (fun (cst, _) -> Nametab.shortest_qualid_of_global Id.Set.empty (GlobRef.ConstRef cst)) i.helpers_info in
   Table.extraction_inline true l
 
-let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
+let define_unfolding_eq ~pm env evd (flags : flags)  p unfp prog prog' ei hook =
   let info' = prog'.program_split_info in
   let info =
     { info' with base_id = prog.program_split_info.base_id;
@@ -40,7 +40,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
                  user_obls = Id.Set.union prog.program_split_info.user_obls info'.user_obls } in
   let () = inline_helpers info in
   let funf_cst = match info'.term_id with GlobRef.ConstRef c -> c | _ -> assert false in
-  let () = if flags.polymorphic then evd := Evd.from_ctx info'.term_ustate in
+  let () = if PolyFlags.univ_poly flags.poly then evd := Evd.from_ctx info'.term_ustate in
   let funfc = e_new_global evd info'.term_id in
   let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
   let hook_eqs _ pm =
@@ -59,7 +59,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
       PathMap.iter decl ei.Principles_proofs.equations_where_map
     in
     let env = Global.env () in
-    let () = if not flags.polymorphic then evd := (Evd.from_env env) in
+    let () = if not (PolyFlags.univ_poly flags.poly) then evd := (Evd.from_env env) in
     let prog' = { program_cst = funf_cst;
                   program_split_info = info }
     in
@@ -74,7 +74,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
                           equations_prob = ei.equations_prob }
     in hook ~pm (p, Some unfp, prog', eqninfo) unfold_eq_id
   in
-  let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
+  let () = if not (PolyFlags.univ_poly flags.poly) then (evd := Evd.from_env (Global.env ())) in
   let sign = program_sign unfp in
   let arity = program_arity unfp in
   let stmt = it_mkProd_or_LetIn
@@ -115,11 +115,11 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
       ~uctx:(Evd.ustate evd) [||]
   in pm
 
-let define_principles ~pm flags rec_type progs =
+let define_principles ~pm (flags : flags) rec_type progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
   let () =
-    if flags.polymorphic then
+    if PolyFlags.univ_poly flags.poly then
       let ustate = (snd (List.hd progs)).program_split_info.term_ustate in
       let () = evd := Evd.merge_universe_context !evd ustate in ()
     else ()
@@ -158,7 +158,7 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
     else false, false
   in
   let env = Global.env () in
-  let flags = { polymorphic = poly; with_eqns; with_ind; allow_aliases = false; 
+  let flags = { poly; with_eqns; with_ind; allow_aliases = false;
     tactic; open_proof } in
   let evm, udecl =
     match eqs with
