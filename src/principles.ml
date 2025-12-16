@@ -54,7 +54,7 @@ let cache_rew_rule (base, gr, l2r) =
   let () = if not (Sorts.QVar.Set.is_empty qvars) then
       CErrors.user_err Pp.(str "Sort polymorphic autorewrite not supported.")
   in
-  let gru = gr, (univs, csts) in
+  let gru = gr, ((qvars, univs), csts) in
   Autorewrite.add_rew_rules
     ~locality:Hints.(if Global.sections_are_opened() then Local else SuperGlobal)
     base
@@ -1758,9 +1758,10 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     if not (PolyFlags.univ_poly poly) then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      let uctx = Evd.universe_context_set !evd in
-      let () = Global.push_qualities QGraph.Internal (PConstraints.ContextSet.sort_context_set uctx) in (* XXX *)
-      let () = Global.push_context_set (PConstraints.ContextSet.univ_context_set uctx) in
+      let uctx = Evd.sort_context_set !evd in
+      let (qs, us), (qcst, ucst) = uctx in
+      let () = Global.push_qualities QGraph.Internal (qs, qcst) in (* XXX *)
+      let () = Global.push_context_set (us, ucst) in
       evd := Evd.from_env (Global.env ())
     else ()
   in
