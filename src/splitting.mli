@@ -180,7 +180,7 @@ type term_info = {
   term_id : Names.GlobRef.t;
   term_ustate : UState.t;
   base_id : string;
-  poly : bool;
+  poly : PolyFlags.t;
   scope : Locality.definition_scope;
   decl_kind : Decls.definition_object_kind;
   helpers_info : (Constant.t * (int * int)) list;

@@ -412,14 +412,14 @@ let interp_attrs (elim, eqns) =
 }
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
-| #[ poly = polymorphic; program_mode = program; atts = derive_flags; tactic = equations_tactic ] ![program_interactive] 
+| #[ poly = poly_def; program_mode = program; atts = derive_flags; tactic = equations_tactic ] ![program_interactive] 
   [ "Equations" "?" equation_options(opt) equations(eqns) ] ->
     { Equations.equations_interactive ~poly ~program_mode ?tactic
       (List.append opt (interp_attrs atts)) (fst eqns) (snd eqns) }
 END
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF STATE program
-| #[ poly = polymorphic; program_mode = program; atts = derive_flags; tactic = equations_tactic  ] 
+| #[ poly = poly_def; program_mode = program; atts = derive_flags; tactic = equations_tactic  ] 
   [ "Equations" equation_options(opt) equations(eqns) ] ->
     { Equations.equations ~poly ~program_mode ?tactic
       (List.append opt (interp_attrs atts)) (fst eqns) (snd eqns) }
@@ -532,11 +532,11 @@ END
 (** Deriving *)
 
 VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF STATE program
-| #[ poly = polymorphic ] [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
+| #[ poly = poly_def ] [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
   Ederive.derive ~poly (List.map Id.to_string ds)
     (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
   }
-| #[ poly = polymorphic ] [ "Equations" "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
+| #[ poly = poly_def ] [ "Equations" "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
   Ederive.derive ~poly (List.map Id.to_string ds)
     (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
   }

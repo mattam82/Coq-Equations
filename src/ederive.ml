@@ -8,7 +8,7 @@
 
 open Constr
 
-type derive_fn_ty = pm:Declare.OblState.t -> poly:bool -> Names.GlobRef.t -> Declare.OblState.t
+type derive_fn_ty = pm:Declare.OblState.t -> poly:PolyFlags.t -> Names.GlobRef.t -> Declare.OblState.t
 
 type derive_record =
   { derive_name : string;

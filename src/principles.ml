@@ -722,7 +722,7 @@ let subst_protos info s gr =
     (* let ty = Reductionops.nf_beta env sigma ty in *)
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
      let id = Nameops.add_suffix (Nametab.basename_of_global gr) "_hint" in
-     let cst, (_sigma, _ec) = Equations_common.declare_constant id term None ~poly:(is_polymorphic info) ~kind:(Decls.IsDefinition info.decl_kind) sigma in
+     let cst, (_sigma, _ec) = Equations_common.declare_constant id term None ~poly:info.poly ~kind:(Decls.IsDefinition info.decl_kind) sigma in
      GlobRef.ConstRef cst)
   else gr
   [@@ocaml.warning "-3"]
@@ -1278,7 +1278,7 @@ let declare_funelim ~pm info env evd is_rec protos progs
                 args_of_elim; elimcgr]
     in
     let instid = Nameops.add_prefix "FunctionalElimination_" id in
-    let poly = is_polymorphic info in
+    let poly = info.poly in
     ignore(Equations_common.declare_instance instid ~poly evd [] cl args)
   in
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
@@ -1310,7 +1310,7 @@ let functional_proof_warning =
 
 let declare_funind ~pm info alias env evd is_rec protos progs
                    ind_stmts all_stmts sign inds kn comb sort f split =
-  let poly = is_polymorphic info.term_info in
+  let poly = info.term_info.poly in
   let id = Id.of_string info.term_info.base_id in
   let indid = Nameops.add_suffix id "_graph_correct" in
   (* Record nested statements which can be repeated during the proof *)
@@ -1406,7 +1406,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
   let () = evd := evm in
   let to_constr c = collapse_term_qualities (Evd.ustate !evd) (EConstr.to_constr !evd c) in
   let stmt = to_constr statement and f = to_constr f in
-  let uctx = Evd.ustate (if poly then !evd else Evd.from_env (Global.env ())) in
+  let uctx = Evd.ustate (if PolyFlags.univ_poly poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind ~pm tactic =
     let pm =
       let cinfo = Declare.CInfo.make ~name:indid ~typ:stmt () in
@@ -1561,7 +1561,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       1 protos
   in
   let evd = ref evd in
-  let poly = is_polymorphic info in
+  let poly = info.poly in
   let statement i filter (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
     let hd, unf = match flalias with
       | Some ((f', _), unf, _) ->
@@ -1755,7 +1755,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
   in
   let () = evd := Evd.minimize_universes !evd in
   let () =
-    if not poly then
+    if not (PolyFlags.univ_poly poly) then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
       let uctx = Evd.universe_context_set !evd in
@@ -1806,7 +1806,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       in
       let () =
         (* Refresh at each equation, accumulating known constraints. *)
-        if not poly then evd := Evd.from_env (Global.env ())
+        if not (PolyFlags.univ_poly poly) then evd := Evd.from_env (Global.env ())
         else ()
       in
       (* FIXME: try to implement a sane handling of universe state threading *)

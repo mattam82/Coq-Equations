@@ -402,7 +402,7 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   let bodyb = replace_vars evd [belowid, belowB] bodyb in
   let bodyb = Evarutil.nf_evar evd bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (GlobRef.IndRef ind)) in
-  let evd = if poly then evd else Evd.from_env (Global.env ()) in
+  let evd = if PolyFlags.univ_poly poly then evd else Evd.from_env (Global.env ()) in
   ignore(declare_constant id bodyb None ~poly evd
 	   ~kind:Decls.(IsDefinition Definition))
 

@@ -8,19 +8,19 @@
 
 type derive_record =
   { derive_name : string;
-    derive_fn : pm:Declare.OblState.t -> poly:bool -> Names.GlobRef.t -> Declare.OblState.t }
+    derive_fn : pm:Declare.OblState.t -> poly:PolyFlags.t -> Names.GlobRef.t -> Declare.OblState.t }
 
 (** When the Derive expects a constr. *)
 val make_derive :
-  (pm:Declare.OblState.t -> Environ.env -> Evd.evar_map -> poly:bool -> EConstr.constr -> Declare.OblState.t) ->
+  (pm:Declare.OblState.t -> Environ.env -> Evd.evar_map -> poly:PolyFlags.t -> EConstr.constr -> Declare.OblState.t) ->
   pm:Declare.OblState.t ->
-  poly:bool -> Names.GlobRef.t -> Declare.OblState.t
+  poly:PolyFlags.t -> Names.GlobRef.t -> Declare.OblState.t
 
 (** When the Derive works on inductive types only. *)
 val make_derive_ind :
-  (pm:Declare.OblState.t -> Environ.env -> Evd.evar_map -> poly:bool -> Names.inductive * EConstr.EInstance.t -> Declare.OblState.t) ->
+  (pm:Declare.OblState.t -> Environ.env -> Evd.evar_map -> poly:PolyFlags.t -> Names.inductive * EConstr.EInstance.t -> Declare.OblState.t) ->
   pm:Declare.OblState.t ->
-  poly:bool -> Names.GlobRef.t -> Declare.OblState.t
+  poly:PolyFlags.t -> Names.GlobRef.t -> Declare.OblState.t
 
 val register_derive : derive_record -> unit
 
@@ -30,7 +30,7 @@ val check_derive : string -> Names.GlobRef.t -> bool
 
 val derive :
   pm:Declare.OblState.t
-  -> poly:bool
+  -> poly:PolyFlags.t
   -> string list
   -> Names.GlobRef.t Loc.located list
   -> Declare.OblState.t

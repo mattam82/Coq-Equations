@@ -127,7 +127,7 @@ let ppenv_sigma f =
     pp (f env (Evd.from_env env) x)
 
 type flags = {
-  polymorphic : bool;
+  poly : PolyFlags.t;
   open_proof : bool;
   with_eqns : bool;
   with_ind : bool;
@@ -240,7 +240,7 @@ let collapse_term_qualities uctx c =
     UnivSubst.map_universes_opt_subst_with_binders ignore self nf_rel nf_qvar nf_univ () c
   in self () c
 
-let make_definition ?opaque ?(poly=false) evm ?types b =
+let make_definition ?opaque ?(poly=PolyFlags.default) evm ?types b =
   let env = Global.env () in
   let evm = match types with
     | None -> fst (Typing.type_of env evm b)
@@ -267,12 +267,12 @@ let declare_constant id body ty ~poly ~kind evd =
   let evm0, evm, ce = make_definition ~opaque:false ~poly evd ?types:ty body in
   let cst = Declare.declare_constant ~name:id (Declare.DefinitionEntry ce) ~kind in
   Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
-  if poly then
+  if PolyFlags.univ_poly poly then
     let cstr = EConstr.(mkConstU (cst, EInstance.make (UVars.UContext.instance (Evd.to_universe_context evm)))) in
     cst, (evm0, cstr)
   else cst, (evm0, EConstr.UnsafeMonomorphic.mkConst cst)
 
-let make_definition ?opaque ?(poly=false) evm ?types b =
+let make_definition ?opaque ?(poly=PolyFlags.default) evm ?types b =
   let evm', _, t = make_definition ?opaque ~poly evm ?types b in
   evm', t
 
@@ -702,7 +702,7 @@ let call_tac_on_ref tac c =
   let c = Constr.mkRef (c, UVars.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
-                        extra = Geninterp.TacStore.empty; poly = false } in
+                        extra = Geninterp.TacStore.empty; poly = PolyFlags.default } in
   let var = Reference (Locus.ArgVar CAst.(make var)) in
   let tac = CAst.(make @@ TacArg (TacCall (make (tac, [var])))) in
   ist, tac

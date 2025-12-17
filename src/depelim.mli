@@ -27,14 +27,14 @@ val dependent_pattern :
 
 
 val depcase
-  :  poly:bool
+  :  poly:PolyFlags.t
   -> inductive * EInstance.t
   -> Environ.env * Evd.evar_map * rel_context * constr * Names.GlobRef.t
 
 val derive_dep_elimination
   :  Environ.env
   -> Evd.evar_map
-  -> poly:bool
+  -> poly:PolyFlags.t
   -> inductive * EInstance.t
   -> Constant.t * (Evd.evar_map * constr)
 

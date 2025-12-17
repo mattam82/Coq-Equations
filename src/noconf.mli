@@ -21,5 +21,5 @@ val mkcase :
 
 val derive_no_confusion :
   pm:Declare.OblState.t
-  -> env -> Evd.evar_map -> poly:bool -> Names.inductive * EInstance.t ->
+  -> env -> Evd.evar_map -> poly:PolyFlags.t -> Names.inductive * EInstance.t ->
   Declare.OblState.t
