@@ -344,7 +344,7 @@ let check_context ~where ?name env evd ctx =
         str "Equations build an ill-typed context: " ++ Printer.pr_rel_context env evd (EConstr.Unsafe.to_rel_context ctx) ++
         Himsg.explain_pretype_error env evd tyerr)
   in
-  let check = Evd.check_poly_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  let check = Evd.check_poly_constraints evd (snd @@ Evd.sort_context_set sigma) in
   if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
     str (Option.default "(anonymous)" name))
 
@@ -362,7 +362,7 @@ let check_typed ~where ?name env evd c =
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
         Himsg.explain_pretype_error env evd tyerr)
   in
-  let check = Evd.check_poly_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  let check = Evd.check_poly_constraints evd (snd @@ Evd.sort_context_set sigma) in
   if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
     str (Option.default "(anonymous)" name))
 
