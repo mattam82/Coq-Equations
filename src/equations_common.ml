@@ -1130,11 +1130,7 @@ let nonalgebraic_universe_level_of_universe env sigma u =
     sigma, Univ.Level.set, u
   | Sorts.Type u0 | Sorts.QSort (_, u0) ->
     match Univ.Universe.level u0 with
-    | Some l ->
-      (match Evd.universe_rigidity sigma l with
-      | Evd.UnivFlexible true ->
-        Evd.make_nonalgebraic_variable sigma l, l, ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l
-      | _ -> sigma, l, u)
+    | Some l -> Evd.make_nonalgebraic_variable sigma l, l, u
     | None ->
       let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
       let ul = ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l in
