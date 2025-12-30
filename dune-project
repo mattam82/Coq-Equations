@@ -45,6 +45,8 @@
    rocq-equations
    coq-hott))
 
+(generate_opam_files)
+ 
 (package
  (name rocq-equations-examples)
  (synopsis "Examples")

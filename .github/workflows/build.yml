@@ -24,7 +24,7 @@ jobs:
           - 'dev'
         ocaml_version:
           - '4.14.2-flambda'
-        target: [ dune ] # hott, disabled for now
+        target: [ dune hott ]
       fail-fast: false
 
     steps:

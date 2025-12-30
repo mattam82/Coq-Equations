@@ -39,7 +39,7 @@ Register bang as equations.internal.bang.
 Definition inaccessible_pattern {A : Type} (t : A) := t.
 
 Module EquationsNotations.
-  Notation "!" := bang : equations_scope.
+  Notation "!" := bang (at level 0) : equations_scope.
 
   Notation "?( t )" := (inaccessible_pattern t) (format "?( t )") : equations_scope.
 End EquationsNotations.
