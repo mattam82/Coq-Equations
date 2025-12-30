@@ -8,4 +8,4 @@
  (theories Stdlib))
 
 (include_subdirs no)
-(dirs ("Prop" "Type"))
+(dirs ("Prop" "Type" "HoTT"))
