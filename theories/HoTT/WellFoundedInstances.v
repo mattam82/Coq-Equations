@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden".
-From Equations Require Import HoTT.Loader Equations.HoTT.Relation Equations.HoTT.WellFounded.
+From Equations.HoTT Require Import Loader Relation WellFounded.
 From HoTT Require Import Spaces.Nat.
 
 Section Lt.

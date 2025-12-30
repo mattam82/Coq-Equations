@@ -8,8 +8,8 @@
 
 Set Warnings "-notation-overridden".
 From Equations Require Import CoreTactics.
-From Equations Require Import HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.DepElim.
-From Stdlib Require Import HoTT.Spaces.Nat.
+From Equations Require Import HoTT.Logic HoTT.Classes HoTT.EqDec HoTT.DepElim.
+From HoTT Require Import Spaces.Nat.
 
 Local Open Scope nat_scope.
 Local Open Scope equations_scope.

@@ -8,9 +8,8 @@
 
 From Equations Require Import Init CoreTactics.
 Set Warnings "-notation-overridden".
-From Stdlib Require Import HoTT.Basics.Trunc HoTT.HSet.
-From Equations Require Import HoTT.Logic Equations.HoTT.Relation
-        Equations.HoTT.Relation_Properties Equations.HoTT.WellFounded.
+From HoTT Require Import Basics.Trunc HSet.
+From Equations.HoTT Require Import Logic Relation Relation_Properties WellFounded.
 
 Set Universe Polymorphism.
 

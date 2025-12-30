@@ -7,9 +7,7 @@
 (**********************************************************************)
 Set Warnings "-notation-overridden".
 From Equations Require Import Init.
-From Equations Require Import HoTT.Logic Equations.HoTT.Classes Equations.HoTT.DepElim
-        Equations.HoTT.Constants
-        Equations.HoTT.Tactics Equations.HoTT.EqDec Equations.HoTT.NoConfusion.
+From Equations.HoTT Require Import Logic Classes DepElim Constants Tactics EqDec NoConfusion.
 From HoTT Require Import Spaces.List.Core.
 Local Open Scope equations_scope.
 Import Sigma_Notations.

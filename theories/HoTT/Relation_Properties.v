@@ -17,8 +17,7 @@
 Set Warnings "-notation-overridden".
 
 From Equations Require Import Init.
-From Equations Require Import HoTT.Logic.
-From Equations Require Import HoTT.Relation.
+From Equations.HoTT Require Import Logic Relation.
 
 Import Sigma_Notations.
 
@@ -28,9 +27,9 @@ Definition subrelation {A} (R S : Relation A) :=
   forall x y, R x y -> S x y.
 
 Class Equivalence {A} (R : Relation A) :=
-  { Equivalence_Reflexive : Reflexive R | 2 ;
-    Equivalence_Symmetric : Symmetric R | 2 ;
-    Equivalence_Transitive : Transitive R | 2 }.
+  { Equivalence_Reflexive :: Reflexive R | 2 ;
+    Equivalence_Symmetric :: Symmetric R | 2 ;
+    Equivalence_Transitive :: Transitive R | 2 }.
 
 Notation inclusion R R' := (subrelation R R').
 
