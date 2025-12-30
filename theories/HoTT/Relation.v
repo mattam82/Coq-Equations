@@ -221,6 +221,7 @@ Section Lexicographic_Exponentiation.
 
 End Lexicographic_Exponentiation.
 
+Create HintDb Relations.
 #[export] Hint Unfold transp union: Relations.
 #[export] Hint Resolve t_step rt_step rt_refl rst_step rst_refl: Relations.
 #[export] Hint Immediate rst_sym: Relations.

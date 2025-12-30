@@ -17,7 +17,7 @@ test-suite:
 
 clean:
 	dune clean
-	
+
 siteexamples: _build/default/examples/*.glob
 	sh siteexamples.sh
 
@@ -39,8 +39,8 @@ ci-dune:
 
 ci-hott:
 	opam install -j 2 -y coq-hott.dev
-	test -f Makefile.hott && $(MAKE) -f Makefile.hott all
-	$(MAKE) -f Makefile.hott install
-	$(MAKE) -f Makefile.hott uninstall
-	
+	dune build -p rocq-equations,rocq-equations-hott
+	dune build -p rocq-equations,rocq-equations-hott @install
+	dune install rocq-equations rocq-equations-hott
+
 .PHONY: ci-dune ci-hott

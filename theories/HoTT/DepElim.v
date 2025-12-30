@@ -10,7 +10,6 @@
 
 Set Warnings "-notation-overridden".
 
-From Stdlib Require Import Program.Tactics.
 Require Export Equations.Init.
 From Equations Require Import Signature CoreTactics.
 From Equations Require Import HoTT.Logic.
@@ -780,6 +779,12 @@ Ltac simplify_equation c :=
           (progress (autorewrite with refl_id)) ||
           reflexivity ||
           (progress (rewrite_sigma2_refl))).
+
+Ltac discriminates :=
+  match goal with
+    | [ H : ?x <> ?x |- _ ] => elim H ; reflexivity
+    | _ => discriminate
+  end.
 
 Ltac solve_equation c :=
   intros ; try simplify_equation c ; try
