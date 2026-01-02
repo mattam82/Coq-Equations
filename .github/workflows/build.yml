@@ -51,3 +51,7 @@ jobs:
               opam install --confirm-level=unsafe-yes -j 2 rocq-equations.dev rocq-equations-hott.dev
               opam list
             endGroup
+          uninstall: |
+            startGroup "Uninstallation test"
+              opam remove -y rocq-equations.dev
+            endGroup
