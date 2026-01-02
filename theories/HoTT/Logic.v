@@ -1,4 +1,5 @@
 From Equations Require Import Init.
+
 Require Export HoTT.Basics.Overture.
 Require Export HoTT.Basics.Tactics.
 
@@ -23,7 +24,7 @@ Register ap as core.identity.congr.
 
 Definition path_inspect {A : Type} (x : A) : { y | paths x y } := (x ; idpath).
 
-From Stdlib Require Import HoTT.Types.Bool.
+From HoTT Require Import Types.Bool.
 (* For compatibility with Coq's [induction] *)
 Definition Bool_rect := Bool_ind.
 
@@ -55,3 +56,5 @@ Notation "x .2" := (Equations.Init.pr2 x) : equations_scope.
 End Sigma_Notations.
 
 Import Sigma_Notations.
+
+Tactic Notation "now" tactic(tac) := tac; solve [ trivial ].

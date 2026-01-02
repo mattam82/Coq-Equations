@@ -10,11 +10,8 @@ Set Warnings "-notation-overridden".
 
 From Equations Require Import Init Signature.
 From Equations Require Import CoreTactics.
-From Equations Require Import HoTT.Logic
-        Equations.HoTT.Classes Equations.HoTT.EqDec
-        Equations.HoTT.Relation
-        Equations.HoTT.WellFounded
-        Equations.HoTT.DepElim Equations.HoTT.Constants.
+From Equations.HoTT Require Import Logic Classes EqDec Relation WellFounded
+  DepElim Constants.
 From HoTT Require Import Basics.Tactics Spaces.Nat.
 
 Set Universe Polymorphism.

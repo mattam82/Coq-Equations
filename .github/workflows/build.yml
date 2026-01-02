@@ -24,7 +24,7 @@ jobs:
           - 'dev'
         ocaml_version:
           - '4.14.2-flambda'
-        target: [ dune ] # hott, disabled for now
+        target: [ dune hott ]
       fail-fast: false
 
     steps:
@@ -34,9 +34,24 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Docker-Coq-Action
+      - name: Rocq Equations Packages
         uses: coq-community/docker-coq-action@v1
         with:
-          opam_file: 'rocq-equations.opam'
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
+          install: |
+            startGroup "Install dependencies"
+              sudo apt-get update -y -q
+              opam pin add -n -y -k path .
+              opam update -y
+              opam install --confirm-level=unsafe-yes -j 2 rocq-equations.dev rocq-equations-hott.dev --deps-only
+            endGroup
+          script: |
+            startGroup "Build"
+              opam install --confirm-level=unsafe-yes -j 2 rocq-equations.dev rocq-equations-hott.dev
+              opam list
+            endGroup
+          uninstall: |
+            startGroup "Uninstallation test"
+              opam remove -y rocq-equations.dev
+            endGroup

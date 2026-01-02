@@ -9,8 +9,7 @@
 Set Warnings "-notation-overridden".
 
 From Equations Require Import Init.
-From Equations Require Import HoTT.Logic.
-From Equations Require Import HoTT.Classes.
+From Equations.HoTT Require Import Logic Classes.
 
 (** Decidable equality.
 
@@ -70,7 +69,7 @@ Theorem UIP_K@{i j} {A : Type@{i}} {U : UIP A} (x : A) :
   forall P : x = x -> Type@{j},
     P 1 -> forall p : x = x, P p.
 Proof.
-  intros P peq e. now elim (uip 1 e).
+  intros P peq e. elim (uip 1 e); assumption.
 Defined.
 
 (** Derivation of principles on sigma types whose domain is decidable. *)
@@ -230,9 +229,9 @@ Defined.
 
 Definition apd_eq {A} {x y : A} (p : x = y) {z} (q : z = x) :
   transport (@paths A z) p q = q @ p.
-Proof. now destruct p, q. Defined.
+Proof. destruct p, q; reflexivity. Defined.
 
-From Stdlib Require Import HoTT.Basics.Trunc.
+From HoTT Require Import Basics.Trunc.
 
 Lemma hprop_hset {A} (h : IsHProp A) : IsHSet A.
 Proof.
@@ -257,7 +256,7 @@ Lemma inj_sigma_r_refl@{i} (A : Type@{i}) (H : IsHSet A) (P : A -> Type@{i}) x (
 Proof.
   unfold inj_sigma_r. intros.
   simpl.
-  now rewrite HSet.axiomK_idpath.
+  rewrite HSet.axiomK_idpath; trivial.
 Defined.
 
 Theorem K {A} `{IsHSet A} (x : A) (P : x = x -> Type) :

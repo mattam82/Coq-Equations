@@ -14,9 +14,9 @@ Set Warnings "-notation-overridden".
 
 From Equations Require Import Init Signature.
 From Equations Require Import CoreTactics.
-From Equations Require Import HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.Constants.
-From Equations Require Import HoTT.DepElim Equations.HoTT.Tactics.
-From Stdlib Require Import HoTT.Spaces.List.Core.
+From Equations.HoTT Require Import Logic Classes EqDec Constants.
+From Equations.HoTT Require Import DepElim Tactics.
+From HoTT Require Import Spaces.List.Core.
 
 
 (** Parameterized inductive types just need NoConfusion. *)

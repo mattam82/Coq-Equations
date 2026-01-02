@@ -13,14 +13,12 @@
 Set Warnings "-notation-overridden".
 From Equations Require Export Init Signature.
 From Equations Require Import CoreTactics.
-Require Export Equations.HoTT.Logic Equations.HoTT.Classes.
-From Equations Require Import HoTT.WellFounded.
-From Equations Require Import HoTT.DepElim Equations.HoTT.EqDec Equations.HoTT.Constants.
-Require Export Equations.HoTT.EqDecInstances.
-Require Export Equations.HoTT.NoConfusion.
-From Equations Require Import HoTT.Subterm.
-Require Export Equations.HoTT.Tactics.
-Require Export Equations.HoTT.FunctionalInduction. (* funelim tactic *)
+From Equations.HoTT Require Export Logic Classes.
+From Equations.HoTT Require Import WellFounded.
+From Equations.HoTT Require Import DepElim EqDec Constants.
+From Equations.HoTT Require Export EqDecInstances NoConfusion.
+From Equations.HoTT Require Import Subterm.
+From Equations.HoTT Require Export Tactics FunctionalInduction. (* funelim tactic *)
 
 Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 

@@ -3,5 +3,5 @@
  (name Equations.Prop)
  (package rocq-equations)
  (synopsis "Equations Plugin")
- (theories Equations)
+ (theories Stdlib Equations)
  (modules :standard))

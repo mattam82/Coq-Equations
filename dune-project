@@ -25,6 +25,28 @@
    (ppx_optcomp :build)
    (ocaml-lsp-server :with-dev-setup)))
 
+(package 
+ (name rocq-equations-hott)
+ (synopsis "A function definition package for Rocq - HoTT variant")
+ (description "Equations is a function definition plugin for Rocq, that allows the \
+  definition of functions by dependent pattern-matching and well-founded, \
+  mutual or nested structural recursion and compiles them into core \
+  terms. It automatically derives the clauses equations, the graph of the \
+  function and its associated elimination principle.")
+ (tags ("keyword:dependent pattern-matching"
+  "keyword:functional elimination"
+  "category:Miscellaneous/Coq Extensions"
+  "logpath:Equations"))
+ (depends
+   (ocaml (>= 4.10.0))
+   (rocq-prover (>= "9.0~"))
+   (ppx_optcomp :build)
+   (ocaml-lsp-server :with-dev-setup)
+   rocq-equations
+   coq-hott))
+
+(generate_opam_files)
+ 
 (package
  (name rocq-equations-examples)
  (synopsis "Examples")
