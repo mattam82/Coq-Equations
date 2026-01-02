@@ -39,4 +39,15 @@ jobs:
         with:
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
-
+          install: |
+            startGroup "Install dependencies"
+              sudo apt-get update -y -q
+              opam pin add -n -y -k path .
+              opam update -y
+              opam install --confirm-level=unsafe-yes -j 2 rocq-equations.dev rocq-equations-hott.dev --deps-only
+            endGroup
+          script: |
+            startGroup "Build"
+              opam install --confirm-level=unsafe-yes -j 2 rocq-equations.dev rocq-equations-hott.dev
+              opam list
+            endGroup
