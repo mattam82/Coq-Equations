@@ -1218,7 +1218,7 @@ let solve_equations_obligations_program ~pm (flags : flags) recids loc i sigma h
          let cst, i = EConstr.destConst !evd hd in
          let ctx = Environ.constant_context (Global.env ()) cst in
          let ctx = gather_fresh_context !evd (EConstr.EInstance.kind sigma i) ctx in
-         evd := Evd.merge_sort_context_set Evd.univ_flexible QGraph.Internal !evd ctx;
+         evd := Evd.merge_sort_context_set Evd.univ_flexible !evd ctx;
          t)
       else t
     in

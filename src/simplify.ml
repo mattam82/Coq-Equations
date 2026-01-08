@@ -444,7 +444,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
       let tf = EConstr.mkRef (f, u) in
       let auctx = Environ.universes_of_global env f in
       let univs = UVars.AbstractContext.instantiate (EConstr.EInstance.kind !evd u) auctx in
-      let sigma = Evd.add_poly_constraints QGraph.Internal !evd univs in
+      let sigma = Evd.add_poly_constraints !evd univs in
       let ty = Retyping.get_type_of env sigma tf in
       evd := sigma; tf, ty
     | None ->
