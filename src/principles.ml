@@ -1760,7 +1760,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
           definitions once and for all. *)
       let uctx = Evd.sort_context_set !evd in
       let (qs, us), (qcst, ucst) = uctx in
-      let () = Global.push_qualities QGraph.Internal (qs, qcst) in (* XXX *)
+      let () = Global.push_qualities ~rigid:false (qs, qcst) in (* XXX *)
       let () = Global.push_context_set (us, ucst) in
       evd := Evd.from_env (Global.env ())
     else ()
