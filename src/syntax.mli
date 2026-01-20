@@ -10,7 +10,6 @@ open Constr
 open Environ
 open Evd
 open Names
-open Equations_common
 
 type 'a with_loc = Loc.t option * 'a
 
@@ -83,7 +82,7 @@ and ('a, 'b) by_annot =
 and 'a where_clause = pre_prototype * 'a list
 and 'a wheres = 'a where_clause list * Vernacexpr.notation_declaration list
 type program = (signature * clause list) list
-and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
+and signature = identifier * EConstr.rel_context * constr (* f : Π Δ. τ *)
 and clause = Clause of Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
 
 type pre_equation = Pre_equation of Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
@@ -158,6 +157,8 @@ type program_info = {
   program_impls : Impargs.manual_implicits;
   program_implicits : Impargs.implicit_status list;
 }
+
+type 'a mutual_fix = MutFix of (program_info * 'a) list * int array * EConstr.rec_declaration
 
 val program_type : program_info -> EConstr.t
 

@@ -240,13 +240,19 @@ let collapse_term_qualities uctx c =
     UnivSubst.map_universes_opt_subst_with_binders ignore self nf_rel nf_qvar nf_univ () c
   in self () c
 
-let make_definition ?opaque ?(poly=PolyFlags.default) evm ?types b =
+let make_definition ?(check = true) ?opaque ?(poly=PolyFlags.default) evm ?types b =
   let env = Global.env () in
   let evm = match types with
-    | None -> fst (Typing.type_of env evm b)
+    | None ->
+      if check then fst (Typing.type_of env evm b)
+      else evm
     | Some t ->
-      let evm = fst (Typing.type_of env evm t) in
-      Typing.check env evm b t
+      if check then
+        let evm, _ = Typing.type_of env evm t in
+        Typing.check env evm b t
+      else
+        let bj = Retyping.get_judgment_of env evm b in
+        Typing.check_actual_type env evm bj t
   in
   let evm = Evd.minimize_universes evm in
   let evm0 = evm in
@@ -263,14 +269,46 @@ let make_definition ?opaque ?(poly=PolyFlags.default) evm ?types b =
   let univs = Evd.univ_entry ~poly evm in
   evm0, evm, Declare.definition_entry ~univs ?types:typ body
 
-let declare_constant id body ty ~poly ~kind evd =
-  let evm0, evm, ce = make_definition ~opaque:false ~poly evd ?types:ty body in
+let declare_constant ?check id body ty ~poly ~kind evd =
+  let evm0, evm, ce = make_definition ?check ~opaque:false ~poly evd ?types:ty body in
   let cst = Declare.declare_constant ~name:id (Declare.DefinitionEntry ce) ~kind in
   Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
   if PolyFlags.univ_poly poly then
     let cstr = EConstr.(mkConstU (cst, EInstance.make (UVars.UContext.instance (Evd.to_universe_context evm)))) in
     cst, (evm0, cstr)
   else cst, (evm0, EConstr.UnsafeMonomorphic.mkConst cst)
+
+let eval_mfix = function
+| Syntax.MutFix (progs, indexes, decl) ->
+  let map i (p, prog) =
+    let newidx = indexes.(i) in
+    let p = { p with Syntax.program_rec = Some (Structural (MutualOn (Some (newidx, None)))) } in
+    let fix = EConstr.mkFix ((indexes, i), decl) in
+    (p, prog, fix)
+  in
+  List.mapi map progs
+
+let declare_mutual ~poly mutual evd =
+  let mutual = eval_mfix mutual in
+  (* We only type-check the first fix, as all other declarations from the mutual
+     block are the same except for the fixpoint index *)
+  let evd = match mutual with
+  | [] -> evd
+  | (_, _, hd) :: _ -> fst (Typing.type_of (Global.env ()) evd hd)
+  in
+  let evd = ref evd in
+  let mutual =
+    List.map (fun (p, prog, fix) ->
+      let ty = p.Syntax.program_orig_type in
+      let kn, (evm, term) =
+        declare_constant ~check:false p.program_id fix (Some ty) ~poly
+          !evd ~kind:Decls.(IsDefinition Fixpoint)
+      in
+      evd := evm;
+      let () = Impargs.declare_manual_implicits false (GlobRef.ConstRef kn) p.program_impls in
+      (p, prog, term)) mutual
+  in
+  !evd, mutual
 
 let make_definition ?opaque ?(poly=PolyFlags.default) evm ?types b =
   let evm', _, t = make_definition ?opaque ~poly evm ?types b in

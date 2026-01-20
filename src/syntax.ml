@@ -18,8 +18,16 @@ open Libnames
 open Constrexpr_ops
 open Constrexpr
 open Evar_kinds
-open Equations_common
 open Constrintern
+
+(* Unfortunate copy-paste from Equations_common due to a dependency cycle *)
+let pp cmds = Feedback.msg_info cmds
+let user_err_loc (loc, pp) = CErrors.user_err ?loc pp
+let anomaly ?label pp = CErrors.anomaly ?label pp
+let find_global s = lazy (Rocqlib.lib_ref ("equations." ^ s))
+let coq_bang = find_global "internal.bang"
+let coq_inacc = find_global "internal.inaccessible_pattern"
+(* / End of copy-paste *)
 
 type 'a with_loc = Loc.t option * 'a
 type identifier = Names.Id.t
@@ -93,7 +101,7 @@ and 'a where_clause = pre_prototype * 'a list
 and 'a wheres = 'a where_clause list * Vernacexpr.notation_declaration list
 
 type program = (signature * clause list) list
-and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
+and signature = identifier * EConstr.rel_context * constr (* f : Π Δ. τ *)
 and clause = Clause of Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
 
 type pre_equation = Pre_equation of Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
@@ -323,6 +331,8 @@ type program_info = {
   program_implicits : Impargs.implicit_status list;
 }
 
+type 'a mutual_fix = MutFix of (program_info * 'a) list * int array * EConstr.rec_declaration
+
 let map_universe f u =
   let u' = f (EConstr.mkSort (EConstr.ESorts.make u)) in
   match Constr.kind (EConstr.Unsafe.to_constr u') with
@@ -333,7 +343,7 @@ let map_program_info f p =
   { p with
     program_orig_type = f p.program_orig_type;
     program_sort = map_universe f p.program_sort;
-    program_sign = map_rel_context f p.program_sign;
+    program_sign = Context.Rel.map f p.program_sign;
     program_arity = f p.program_arity }
 
 let _check_linearity env sigma opats =

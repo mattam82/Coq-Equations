@@ -391,6 +391,16 @@ let compute_possible_guardness_evidences sigma n fixbody fixtype =
     let ctx = fst (decompose_prod_n_decls sigma m fixtype) in
     List.map_i (fun i _ -> i) 0 ctx
 
+let eval_mfix = function
+| MutFix (progs, indexes, decl) ->
+  let map i (p, prog) =
+    let newidx = indexes.(i) in
+    let p = { p with Syntax.program_rec = Some (Structural (MutualOn (Some (newidx, None)))) } in
+    let fix = mkFix ((indexes, i), decl) in
+    (p, prog, fix)
+  in
+  List.mapi map progs
+
 let define_mutual_nested env evd get_prog progs =
   let mutual =
     List.filter (fun (p, prog) -> not (is_nested p)) progs
@@ -492,13 +502,7 @@ let define_mutual_nested env evd get_prog progs =
     Pretyping.esearch_fix_guard env !evd (Array.to_list possible_indexes)
       (names, tys, bodies)
   in
-  let declare_fix_fns i (p,prog) =
-    let newidx = indexes.(i) in
-    let p = { p with Syntax.program_rec = Some (Structural (MutualOn (Some (newidx, None)))) } in
-    let fix = mkFix ((indexes, i), decl) in
-    (p, prog, fix)
-  in
-  let fixes = List.mapi declare_fix_fns mutual in
+  let fixes = MutFix (mutual, indexes, decl) in
   let declare_nested (p,prog) body = (p, prog, body) in
   let nested = List.map2 declare_nested nested nestedbodies in
   fixes, nested
@@ -706,17 +710,8 @@ let define_mutual_nested_csts flags env evd get_prog progs =
   let mutual, nested =
     define_mutual_nested env evd (fun prog -> get_prog evd prog) progs
   in
-  let mutual =
-    List.map (fun (p, prog, fix) ->
-        let ty = p.Syntax.program_orig_type in
-        let kn, (evm, term) =
-          declare_constant p.program_id fix (Some ty) ~poly:flags.poly
-            !evd ~kind:Decls.(IsDefinition Fixpoint)
-        in
-        evd := evm;
-        Impargs.declare_manual_implicits false (GlobRef.ConstRef kn) p.program_impls;
-        (p, prog, term)) mutual
-  in
+  let evm, mutual = declare_mutual ~poly:flags.poly mutual !evd in
+  let () = evd := evm in
   let args = List.rev_map (fun (p', _, term) -> term) mutual in
   let nested =
     List.map (fun (p, prog, fix) ->
@@ -845,7 +840,9 @@ let make_programs env evd flags ?(define_constants=false) programs =
           let (p, (prob, r, s, after, term)) = List.hd terms in
           push_rel_context after env
         in
-        define_mutual_nested env evd (fun (_, _, _, _, x) -> x) terms
+        let mutual, nested = define_mutual_nested env evd (fun (_, _, _, _, x) -> x) terms in
+        let mutual = eval_mfix mutual in
+        mutual, nested
     in
     let make_prog (p, (prob, rec_info, s', after, _), b) =
       let term = it_mkLambda_or_LetIn b after in
