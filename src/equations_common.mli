@@ -159,6 +159,7 @@ val make_definition :
    even in the polymorphic case. *)
 
 val declare_constant :
+  ?check:bool ->
   Id.t ->
   constr ->
   constr option ->
@@ -166,6 +167,12 @@ val declare_constant :
   kind:Decls.logical_kind ->
   Evd.evar_map ->
   Constant.t * (Evd.evar_map * EConstr.t)
+
+val declare_mutual :
+  poly:PolyFlags.t ->
+  'a Syntax.mutual_fix ->
+  Evd.evar_map ->
+  Evd.evar_map * (Syntax.program_info * 'a * EConstr.t) list
 
 val declare_instance :
   Names.Id.t ->
