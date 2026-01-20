@@ -212,6 +212,17 @@ let global_reference id =
   | None ->
       CErrors.anomaly Pp.(str"global_reference called on non existing " ++ Names.Id.print id)
 
+(* Compute the universe constraints necessary for [t] to typecheck *)
+let synthetize_type env sigma t =
+  (* unset the guard checking, it is useless for constraints *)
+  let flags = Environ.typing_flags env in
+  let flags = { flags with Declarations.check_guarded = false } in
+  let env = Environ.set_typing_flags flags env in
+  Typing.type_of ~refresh:false env sigma t
+
+let synthetize env sigma t =
+  fst (synthetize_type env sigma t)
+
 let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
   evd := evm; t
@@ -244,15 +255,18 @@ let make_definition ?(check = true) ?opaque ?(poly=PolyFlags.default) evm ?types
   let env = Global.env () in
   let evm = match types with
     | None ->
-      if check then fst (Typing.type_of env evm b)
-      else evm
+      if check then synthetize env evm b else evm
     | Some t ->
-      if check then
-        let evm, _ = Typing.type_of env evm t in
-        Typing.check env evm b t
-      else
-        let bj = Retyping.get_judgment_of env evm b in
-        Typing.check_actual_type env evm bj t
+      let evm = synthetize env evm t in
+      let evm, bj =
+        if check then
+          let evm, u = synthetize_type env evm b in
+          evm, { uj_val = t; uj_type = u }
+        else
+          let bj = Retyping.get_judgment_of env evm b in
+          evm, bj
+      in
+      Typing.check_actual_type env evm bj t
   in
   let evm = Evd.minimize_universes evm in
   let evm0 = evm in
@@ -294,7 +308,7 @@ let declare_mutual ~poly mutual evd =
      block are the same except for the fixpoint index *)
   let evd = match mutual with
   | [] -> evd
-  | (_, _, hd) :: _ -> fst (Typing.type_of (Global.env ()) evd hd)
+  | (_, _, hd) :: _ -> synthetize (Global.env ()) evd hd
   in
   let evd = ref evd in
   let mutual =
