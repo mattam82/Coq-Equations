@@ -184,7 +184,7 @@ val interp_eqn : env -> Evd.evar_map -> Vernacexpr.notation_declaration list -> 
   avoid:Id.Set.t ->
   pre_equation -> pre_clause
 
-val wit_equations_list : pre_equation list Genarg.uniform_genarg_type
+val wit_equations_list : (pre_equation list, Util.Empty.t) GenConstr.tag
 
 val is_recursive : Names.Id.t -> pre_equation wheres -> bool
 
