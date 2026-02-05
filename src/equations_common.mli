@@ -19,6 +19,7 @@ val equations_with_funext : bool ref
 val equations_transparent : bool ref
 val equations_derive_equations : bool ref
 val equations_derive_eliminator : bool ref
+val equations_obligations : unit -> bool
 
 val debug : bool ref
 val equations_debug : (unit -> Pp.t) -> unit
@@ -32,6 +33,7 @@ val enter_goal : (Environ.env -> Evd.evar_map -> EConstr.t -> unit Proofview.tac
 (* Common flags *)
 type flags = {
   poly : PolyFlags.t;
+  obligations : bool;
   open_proof : bool;
   with_eqns : bool;
   with_ind : bool;

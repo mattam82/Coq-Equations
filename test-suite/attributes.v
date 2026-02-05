@@ -4,7 +4,7 @@ Ltac solvetac :=
   match goal with |- ?T => exact 0 end.
 
 Module WithProgram.
-  #[tactic=idtac]
+  #[tactic=idtac,program]
   Equations foo (x : nat) : nat :=
   | 0 => 0
   | S n => S _.
@@ -39,7 +39,7 @@ Module QualifiedTactic.
     | x := _.
 
   (* equations_simpl doesn't *)
-  #[tactic="Equations.CoreTactics.equations_simplify"]
+  #[tactic="Equations.CoreTactics.equations_simplify",obligations]
   Equations bar (x : nat) : nat :=
     | x := _.
     Next Obligation. exact 0. Qed.

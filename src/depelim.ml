@@ -442,7 +442,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let data =
       Covering.{
         rec_type = [None];
-        flags = { poly = PolyFlags.of_univ_poly true; open_proof = false; with_eqns = false; with_ind = false;
+        flags = { poly = PolyFlags.of_univ_poly true; obligations = false; open_proof = false; with_eqns = false; with_ind = false;
           allow_aliases = false;
           tactic = !Declare.Obls.default_tactic};
         program_mode = false;

@@ -412,16 +412,16 @@ let interp_attrs (elim, eqns) =
 }
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
-| #[ poly = poly_def; program_mode = program; atts = derive_flags; tactic = equations_tactic ] ![program_interactive] 
+| #[ poly = poly_def; program_mode = program; atts = derive_flags; obligations = equations_obligations; tactic = equations_tactic ] ![program_interactive]
   [ "Equations" "?" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations_interactive ~poly ~program_mode ?tactic
+    { Equations.equations_interactive ~poly ~program_mode ?obligations ?tactic
       (List.append opt (interp_attrs atts)) (fst eqns) (snd eqns) }
 END
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF STATE program
-| #[ poly = poly_def; program_mode = program; atts = derive_flags; tactic = equations_tactic  ] 
+| #[ poly = poly_def; program_mode = program; atts = derive_flags; obligations = equations_obligations; tactic = equations_tactic  ]
   [ "Equations" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations ~poly ~program_mode ?tactic
+    { Equations.equations ~poly ~program_mode ?obligations ?tactic
       (List.append opt (interp_attrs atts)) (fst eqns) (snd eqns) }
 END
 
