@@ -228,7 +228,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
     Covering.{
       program_mode = false;
       rec_type = [None];
-      flags = { poly = poly; open_proof = false;
+      flags = { poly = poly; obligations = false; open_proof = false;
                 with_eqns = false; with_ind = false; 
                 allow_aliases = true; (* We let the compiler unify arguments that are forced equal *)
                 tactic = !Declare.Obls.default_tactic };

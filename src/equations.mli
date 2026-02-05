@@ -15,6 +15,7 @@ val define_by_eqs
   :  pm:Declare.OblState.t
   -> poly:PolyFlags.t
   -> program_mode:bool
+  -> obligations:bool option
   -> tactic:unit Proofview.tactic
   -> open_proof:bool
   -> Syntax.equation_options
@@ -30,7 +31,10 @@ val define_principles :
 
 val equations :
   pm:Declare.OblState.t ->
-  poly:PolyFlags.t -> program_mode:bool -> ?tactic:Libnames.qualid ->
+  poly:PolyFlags.t ->
+  program_mode:bool ->
+  ?obligations:bool ->
+  ?tactic:Libnames.qualid ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   Vernacexpr.notation_declaration list ->
@@ -38,7 +42,9 @@ val equations :
 
 val equations_interactive :
   pm:Declare.OblState.t ->
-  poly:PolyFlags.t -> program_mode:bool -> ?tactic:Libnames.qualid ->
+  poly:PolyFlags.t -> program_mode:bool ->
+  ?obligations:bool ->
+  ?tactic:Libnames.qualid ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   Vernacexpr.notation_declaration list ->

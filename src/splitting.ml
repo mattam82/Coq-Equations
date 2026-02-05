@@ -1138,9 +1138,15 @@ let solve_equations_obligations ~pm (flags : Equations_common.flags) recids loc 
        pm, None)
   else if flags.open_proof then pm, Some lemma
   else
-    user_err_loc (loc, str"Equations definition generated subgoals that " ++
-                                  str "could not be solved automatically. Use the \"Equations?\" command to" ++
-                                  str " refine them interactively.")
+    user_err_loc
+      (loc,
+       str"Equations definition generated subgoals that " ++
+         str "could not be solved automatically." ++ spc () ++
+         str "Use the \"Equations?\" command to" ++ spc () ++
+         str "refine them interactively," ++ spc () ++
+         str "or [Set Equations Obligations] globally" ++ spc () ++
+         str "or locally using the #[obligations] attribute" ++ spc () ++
+         str "to use the obligation system.")
   in
   pm, lemma
 
@@ -1338,14 +1344,14 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots (flags : fl
     let loc = program_loc hdprog in
     let id = program_id hdprog in
     if Evd.has_undefined !evd then
-      if flags.open_proof then
+      if not (flags.open_proof) && flags.obligations then begin
+        let pm =
+          solve_equations_obligations_program ~pm flags recids loc id !evd (all_hook hook) in
+        (), pm, None end
+      else
         let pm, lemma =
           solve_equations_obligations ~pm flags recids loc id !evd (all_hook hook) in
         (), pm, lemma
-      else
-        let pm =
-          solve_equations_obligations_program ~pm flags recids loc id !evd (all_hook hook) in
-        (), pm, None
     else
       if flags.open_proof then 
         begin warn_complete ?loc id;

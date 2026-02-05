@@ -103,6 +103,12 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b -> equations_derive_eliminator := b)
 }
 
+let { Goptions.get = equations_obligations } =
+  Goptions.declare_bool_option_and_ref
+    ~key:["Equations";"Obligations"]
+    ~value:false
+    ()
+
 (* Debugging infrastructure. *)
 
 let debug = ref false
@@ -128,6 +134,7 @@ let ppenv_sigma f =
 
 type flags = {
   poly : PolyFlags.t;
+  obligations : bool;
   open_proof : bool;
   with_eqns : bool;
   with_ind : bool;

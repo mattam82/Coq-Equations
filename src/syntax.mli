@@ -191,3 +191,4 @@ val is_recursive : Names.Id.t -> pre_equation wheres -> bool
 val equations_attributes : Attributes.vernac_flags -> equation_user_option list
 val derive_flags : (bool option * bool option) Attributes.attribute
 val equations_tactic : Libnames.qualid option Attributes.attribute
+val equations_obligations : bool option Attributes.attribute

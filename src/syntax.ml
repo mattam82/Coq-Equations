@@ -276,6 +276,9 @@ let tactic_parser : qualid Attributes.key_parser = fun ?loc orig args ->
 let equations_tactic =
   Attributes.attribute_of_list ["tactic",tactic_parser]
 
+let equations_obligations =
+  Attributes.bool_attribute ~name:"obligations"
+
 type rec_type_item =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
   | Logical of int * Id.t with_loc (* for nested wf rec: number of arguments before the side-condition *)
