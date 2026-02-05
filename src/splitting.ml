@@ -1107,11 +1107,13 @@ let solve_equations_obligations ~pm (flags : Equations_common.flags) recids loc 
       match types with
       | [] -> Proofview.TNil evm
       | (evar_env, ev, evi, local_context, type_) :: tys ->
-        let cont evm wit =
-          let evm = Evd.define ev (applist (wit, Context.Named.instance_list mkVar local_context)) evm in
-          aux tys evm
-        in
-        Proofview.TCons (evar_env, evm, nf_evar evm type_, cont)
+         let cont evm wit =
+           let ev' = destEvar evm wit in
+           let evm = Evd.transfer_name ev (fst ev') evm in
+           let evm = Evd.define ev (applist (wit, Context.Named.instance_list mkVar local_context)) evm in
+           aux tys evm
+         in
+         Proofview.TCons (evar_env, evm, nf_evar evm type_, cont)
     in aux types sigma
   in
   let do_intros =
