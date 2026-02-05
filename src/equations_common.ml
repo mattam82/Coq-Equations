@@ -106,7 +106,7 @@ let _ = Goptions.declare_bool_option {
 let { Goptions.get = equations_obligations } =
   Goptions.declare_bool_option_and_ref
     ~key:["Equations";"Obligations"]
-    ~value:false
+    ~value:true
     ()
 
 (* Debugging infrastructure. *)
