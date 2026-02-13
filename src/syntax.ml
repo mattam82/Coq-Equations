@@ -228,8 +228,8 @@ let ppclause clause =
   let sigma = Evd.from_env env in
   pp(pr_clause env sigma clause)
 
-let wit_equations_list : pre_equation list Genarg.uniform_genarg_type =
-  Genarg.create_arg "equations_list"
+let wit_equations_list : (pre_equation list, Util.Empty.t) GenConstr.tag =
+  GenConstr.create "equations_list"
 
 let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
@@ -615,8 +615,8 @@ let interp_eqn env sigma notations p ~avoid eqn =
        *       let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
        *       let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
        *       arg) *)
-      | CGenarg eqns when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
-        let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
+      | CGenarg (Raw (tag, eqns)) when Option.has_some (GenConstr.eq tag wit_equations_list) ->
+        let Refl = Option.get @@ GenConstr.eq tag wit_equations_list in
         let id = !whereid in
         let () = whereid := Nameops.increment_subscript id in
         let avoid = Id.Set.add id avoid in
