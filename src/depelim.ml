@@ -163,7 +163,7 @@ let depcase ~poly ((mind, i as ind), u) =
         (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br))
       oneind.mind_consnames oneind.mind_nf_lc
   in
-  let ci = make_case_info (Global.env ()) ind RegularStyle in
+  let ci = make_case_info (Global.env ()) ind MatchStyle in
   let obj i =
     mkApp (mkIndU (ind,u),
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)

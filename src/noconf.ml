@@ -31,7 +31,7 @@ let mkcase env sigma c ty constrs =
   let ctx = CVars.subst_instance_context ui ctx in
   let _len = List.length ctx in
   let params = mindb.mind_nparams in
-  let ci = make_case_info env (fst ind) RegularStyle in
+  let ci = make_case_info env (fst ind) MatchStyle in
   let brs = 
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in

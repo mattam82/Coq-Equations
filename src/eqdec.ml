@@ -67,7 +67,7 @@ let inductive_info sigma ((mind, _ as ind),u) =
 	arities
     in
     let case c pred brs =
-      let ci = make_case_info (Global.env ()) (mind,i) Constr.RegularStyle in
+      let ci = make_case_info (Global.env ()) (mind,i) Constr.MatchStyle in
       mkCase (EConstr.contract_case env sigma (ci, (pred, ERelevance.relevant), Constr.NoInvert, c, brs))
       (* TODO relevance / case inversion *)
     in
