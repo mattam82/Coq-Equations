@@ -230,17 +230,10 @@ let def_intern ist x = (ist, x)
 let def_subst _ x = x
 let def_interp ist x = Ftactic.return x
 
-let register_interp0 wit f =
-  let interp ist v =
-    Ftactic.bind (f ist v)
-      (fun v -> Ftactic.return (Geninterp.Val.inject (Geninterp.val_tag (Genarg.topwit wit)) v))
-  in
-  Tacinterp.Register.register_interp0 wit interp
-
 let declare_uniform t =
   Genintern.register_intern0 t def_intern;
   Gensubst.register_subst0 t def_subst;
-  register_interp0 t def_interp
+  Tacinterp.Register.register_interp0 t def_interp
 
 let () =
   declare_uniform wit_my_preident
