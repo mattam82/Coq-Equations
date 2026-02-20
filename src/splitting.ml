@@ -494,7 +494,7 @@ let define_mutual_nested env evd get_prog progs =
     Array.of_list names, Array.of_list tys, Array.of_list bodies
   in
   let nested, mutual = List.partition (fun (p,prog) -> is_nested p) progs in
-  let indexes =
+  let evd', indexes =
     let names, tys, bodies = decl in
     let possible_indexes =
       Array.map3 (compute_possible_guardness_evidences !evd) structargs bodies tys
@@ -502,6 +502,9 @@ let define_mutual_nested env evd get_prog progs =
     Pretyping.esearch_fix_guard env !evd (Array.to_list possible_indexes)
       (names, tys, bodies)
   in
+  (* TODO: Since evd is a ref, do we want to mutate it here or update the interface to return
+     a new evar_map? *)
+  evd := evd';
   let fixes = MutFix (mutual, indexes, decl) in
   let declare_nested (p,prog) body = (p, prog, body) in
   let nested = List.map2 declare_nested nested nestedbodies in
