@@ -121,7 +121,7 @@ let define_principles ~pm (flags : flags) rec_type progs =
   let () =
     if PolyFlags.univ_poly flags.poly then
       let ustate = (snd (List.hd progs)).program_split_info.term_ustate in
-      let () = evd := Evd.merge_universe_context !evd ustate in ()
+      let () = evd := Evd.merge_ustate !evd ustate in ()
     else ()
   in
   let pm, progs' = Principles.unfold_programs ~pm env evd flags rec_type progs in

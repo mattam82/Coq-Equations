@@ -1251,8 +1251,8 @@ let declare_funelim ~pm info env evd is_rec protos progs
          ind_stmts and all_stmts are derived, universe unification will
          take care of unifying the eliminator's fresh instance with the
          universes of the constant and the functional induction lemma. *)
-      let () = evd := Evd.merge_universe_context !evd info.term_ustate in
-      let () = evd := Evd.merge_universe_context !evd ectx in
+      let () = evd := Evd.merge_ustate !evd info.term_ustate in
+      let () = evd := Evd.merge_ustate !evd ectx in
       let sigma, elimc = Evd.fresh_global (Global.env ()) !evd elim in
       let elimty = Retyping.get_type_of env sigma elimc in
       let () = evd := sigma in
