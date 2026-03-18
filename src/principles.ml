@@ -1707,7 +1707,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive (univs, ubinders) [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let sort = Inductiveops.top_allowed_sort (Global.env()) (kn,0) in
-    let sort_suff = Elimschemes.elimination_suffix (UnivGen.QualityOrSet.of_quality sort) in
+    let sort_suff = Elimschemes.elimination_suffix sort in
     let kn, comb =
       match inds with
       | [ind] ->
@@ -1715,7 +1715,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         let mutual =
           (CList.map_i (fun i ind ->
                let id = CAst.make @@ scheme in
-               (id, false, (kn, i), UnivGen.QualityOrSet.of_quality sort)) 0 inds)
+               (id, false, (kn, i), sort)) 0 inds)
         in
         Indschemes.do_mutual_induction_scheme ~register:true (Global.env()) ~force_mutual:true mutual;
         kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
@@ -1724,7 +1724,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
           (CList.map_i (fun i ind ->
                let suff = "_mut" in
                let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
-               (id, false, (kn, i), UnivGen.QualityOrSet.of_quality sort)) 0 inds)
+               (id, false, (kn, i), sort)) 0 inds)
         in
         Indschemes.do_mutual_induction_scheme ~register:true (Global.env()) ~force_mutual:true mutual;
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_graph" ^ sort_suff) in
