@@ -223,7 +223,7 @@ let interp_tactic = function
       with Not_found -> CErrors.user_err Pp.(str"Tactic " ++ pr_qualid qid ++ str" not found")
     in
     let genarg = Tacenv.interp_ltac kn in
-    let tacval = Tacinterp.Value.of_closure (Tacinterp.default_ist ()) genarg in
+    let tacval = Tacinterp.Value.closure (Tacinterp.default_ist ()) genarg in
     Tacinterp.Value.apply tacval []
   | None -> !Declare.Obls.default_tactic
 
