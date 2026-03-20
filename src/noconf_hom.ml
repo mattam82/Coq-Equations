@@ -133,10 +133,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
     match Lazy.force logic_sort with
     | Qual (QConstant QType | QVar _) | Set -> (* In that case noConfusion lives at the level of the inductive family *)
       let sort = EConstr.mkSort inds in
-      let is_level = match ESorts.kind sigma0 inds with
-      | Sorts.Prop | Sorts.SProp | Sorts.Set -> true
-      | Sorts.Type u | Sorts.QSort (_, u) -> Univ.Universe.is_level u
-      in
+      let is_level = Univ.Universe.is_level (Sorts.univ_of_sort @@ ESorts.kind sigma0 inds) in
       if is_level then sigma, sort
       else
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
