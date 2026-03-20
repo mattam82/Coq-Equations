@@ -250,7 +250,7 @@ let collapse_term_qualities uctx c =
 	  else raise e
   in
   let nf_qvar q = match UState.nf_qvar uctx q with
-    | QConstant _ as q -> q
+    | QConstant _ | QGlobal _ as q -> q
     | QVar q -> (* hack *) QConstant QType
   in
   let nf_univ _ = None in
@@ -1187,7 +1187,7 @@ let nonalgebraic_universe_level_of_universe env sigma u =
   match ESorts.kind sigma u with
   | Sorts.Set | Sorts.Prop | Sorts.SProp ->
     sigma, Univ.Level.set, u
-  | Sorts.Type u0 | Sorts.QSort (_, u0) ->
+  | Sorts.Type u0 | GQSort (_, u0) | Sorts.VQSort (_, u0) ->
     match Univ.Universe.level u0 with
     | Some l -> Evd.make_nonalgebraic_variable sigma l, l, u
     | None ->

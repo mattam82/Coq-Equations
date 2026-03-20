@@ -95,7 +95,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
     | Qual (QConstant QSProp) -> mkSProp
     | Qual (QConstant QProp) -> mkProp
     | Set -> mkSet
-    | Qual (QConstant QType | QVar _) ->
+    | Qual (QConstant QType | QVar _ | QGlobal _) ->
       (* In that case the noConfusion principle lives at the level of the type. *)
       let sort = EConstr.mkSort inds in
       let sigma, s =

@@ -1162,7 +1162,7 @@ let gather_fresh_context sigma u octx =
     Array.fold_left (fun ctx' l ->
         let open Sorts.Quality in
         match l with
-        | QConstant _ -> assert false
+        | QConstant _ | QGlobal _ -> assert false
         | QVar l ->
           if not (Sorts.QVar.Set.mem l qvars) then Sorts.QVar.Set.add l ctx'
           else ctx')
