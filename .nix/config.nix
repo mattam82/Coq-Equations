@@ -51,20 +51,19 @@ with builtins; with (import <nixpkgs> {}).lib;
 
   ## select an entry to build in the following `bundles` set
   ## defaults to "default"
-  default-bundle = "default";
-
+  default-bundle = "rocq-9.2";
 
   ## write one `bundles.name` attribute set per
   ## alternative configuration
   ## When generating GitHub Action CI, one workflow file
   ## will be created per bundle
-  bundles.default = {
+  bundles."rocq-9.2" = {
     ## You can override Rocq and other Rocq rocqPackages
     ## through the following attribute
-    rocqPackages.rocq-core.override.version = "master";
-    rocqPackages.stdlib.override.version = "master";
-    coqPackages.coq.override.version = "master";
-    coqPackages.stdlib.override.version = "master";
+    rocqPackages.rocq-core.override.version = "9.2";
+    rocqPackages.stdlib.override.version = "9.1.0";
+    coqPackages.coq.override.version = "9.2";
+    coqPackages.stdlib.override.version = "9.1.0";
     ## You can override Coq and other Coq coqPackages
     ## through the following attribute
     # coqPackages.coq.override.version = "8.11";
@@ -106,7 +105,7 @@ with builtins; with (import <nixpkgs> {}).lib;
     ## reverse dependency of a job flagged as "main-job" (see above).
 
     ## Run on push on following branches (default [ "master" ])
-    push-branches = [ "main" ];
+    push-branches = [ "9.2" ];
   };
 
   ## Cachix caches to use in CI
