@@ -3,13 +3,12 @@ name: CI
 on: 
   push: # On any push on a "stable" branch
     branches:
-      - main
-      - 8.14
-      - 8.13
-      - 8.12
-      - 8.11
+      - 9.2
 
   pull_request: # On all pull-request changes
+    branches:
+      - 9.2
+
   release: # At release time
     types:
       - created
@@ -21,7 +20,7 @@ jobs:
     strategy:
       matrix:
         coq_version: 
-          - 'dev'
+          - '9.2'
         ocaml_version:
           - '4.14.2-flambda'
         target: [ dune hott ]
