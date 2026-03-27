@@ -1759,8 +1759,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     if not (PolyFlags.univ_poly poly) then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      let sigma = Evd.collapse_sort_variables !evd in
-      let uctx = Evd.sort_context_set sigma in
+      let uctx = Evd.sort_context_set !evd in
       let (_qs, us), (_qcst, ucst) = uctx in
       let () = Global.push_context_set (us, ucst) in
       evd := Evd.from_env (Global.env ())
