@@ -46,7 +46,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     | Qual (QConstant QSProp) -> failwith "not implemented"
     | Qual (QConstant QProp) -> mkProp
     | Set -> mkSet
-    | Qual (QConstant QType | QVar _) -> EConstr.mkSort (ESorts.make indsort)
+    | Qual (QConstant QType | QGlobal _ | QVar _) -> EConstr.mkSort (ESorts.make indsort)
   in
   let len = List.length ctx in
   let params = mind.mind_nparams_rec in
