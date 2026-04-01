@@ -112,7 +112,7 @@ let filter_arguments f l =
     | _, _ -> l
   in aux 0 f l
 
-module CMap = Map.Make(Constr)
+module CMap = Map.Make(Termops.ConstrData)
 
 let clean_rec_calls sigma (hyps, c) =
   let open Context.Rel.Declaration in
