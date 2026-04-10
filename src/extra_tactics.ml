@@ -39,7 +39,7 @@ let refine_ho c =
     let concl = concl gl in
     let ty = Retyping.get_type_of env sigma c in
     let ts = TransparentState.full in
-    let flags = Evarconv.default_flags_of ts in
+    let flags = Evarconv.default_flags_of sigma ts in
     let evd = ref (to_evar_map sigma) in
     let rec aux env concl ty =
       match kind sigma concl, kind sigma ty with
