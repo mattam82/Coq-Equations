@@ -497,9 +497,9 @@ let build_app (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
 let transparent_state env =
   Conv_oracle.get_transp_state (Environ.oracle env)
 
-let unif_flags env =
+let unif_flags env evd =
   let flags = transparent_state env in
-  Evarconv.default_flags_of flags
+  Evarconv.default_flags_of evd flags
 
 let is_conv (env : Environ.env) (sigma : Evd.evar_map) (ctx : rel_context)
   (t1 : EConstr.t) (t2 : EConstr.t) : bool =
@@ -524,7 +524,7 @@ let compose_term (env : Environ.env) (evd : Evd.evar_map ref)
         EConstr.mkVar id) named_ctx1 in
       (* Finally, substitute the rels in [c2] to get a valid term for [ev1]. *)
       let c2 = Vars.substl subst_ctx1 c2 in
-      evd := Evarsolve.check_evar_instance Evarconv.(conv_fun evar_conv_x) (unif_flags env) env !evd ev1 c2;
+      evd := Evarsolve.check_evar_instance Evarconv.(conv_fun evar_conv_x) (unif_flags env !evd) env !evd ev1 c2;
       evd := Evd.define ev1 c2 !evd;
       h2, c1
   | None -> assert false
