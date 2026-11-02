@@ -68,7 +68,6 @@ with builtins; with (import <nixpkgs> {}).lib;
     ## You can override Coq and other Coq coqPackages
     ## through the following attribute
     # coqPackages.coq.override.version = "8.11";
-    dune.override.version = "3.21.1";
 
     ## Reverse dependencies, built against the current Equations
     coqPackages.ExtLib.override.version = "master";
